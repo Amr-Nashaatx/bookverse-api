@@ -1,17 +1,22 @@
+import "./types/index.js";
 import express, { Application } from "express";
+
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
-import { errorHandler } from "./middlewares/errorHandler.js";
+
 import authRoutes from "./routes/authRoutes.js";
 import bookRoutes from "./routes/bookRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import shelfRoutes from "./routes/shelfRoutes.js";
+import authorRoutes from "./routes/authorRoutes.js";
+
 import devAuth from "./routes/dev/devAuth.js";
 import cookieParser from "cookie-parser";
-import { swaggerSpec, swaggerUi } from "./config/swagger.js";
 import dotenv from "dotenv";
+
+import { errorHandler } from "./middlewares/errorHandler.js";
 
 dotenv.config();
 const app: Application = express();
@@ -39,6 +44,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/shelves", shelfRoutes);
+app.use("/api/authors", authorRoutes);
 
 app.use(errorHandler);
 

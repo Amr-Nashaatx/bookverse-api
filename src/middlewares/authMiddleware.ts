@@ -5,7 +5,7 @@ import { UserModel } from "../models/userModel.js";
 import { Request, Response, NextFunction } from "express";
 
 export const auth = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies.jwt_token ?? "";
     let isValidToken;
     try {

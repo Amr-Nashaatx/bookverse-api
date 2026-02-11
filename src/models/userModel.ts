@@ -2,15 +2,16 @@ import mongoose, { Schema, Document } from "mongoose";
 import validator from "validator";
 import bcrypt from "bcrypt";
 
-interface IUser extends Document {
+export interface IUser extends Document {
   name: string;
   email: string;
   password: string;
-  role: "user" | "admin";
+  role: "user" | "admin" | "author";
+  isAuthor: boolean;
   createdAt: Date;
   updatedAt: Date;
+  _id: mongoose.Types.ObjectId;
 }
-
 const userSchema = new Schema<IUser>(
   {
     name: {
@@ -33,9 +34,13 @@ const userSchema = new Schema<IUser>(
       minLength: [8, "Password must be at least 8 characters"],
       select: false,
     },
+    isAuthor: {
+      type: Boolean,
+      default: false,
+    },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "author"],
       default: "user",
     },
   },

@@ -50,6 +50,7 @@ export const sanitizeUser = (user: any) => ({
   id: user._id,
   name: user.name,
   email: user.email,
+  isAuthor: user.isAuthor,
   role: user.role,
 });
 
@@ -57,5 +58,6 @@ export const serializeUser = (user: any) => ({
   id: user.id,
   name: user.name,
   email: user.email,
+  isAuthor: user.isAuthor,
   role: user.role,
 });
