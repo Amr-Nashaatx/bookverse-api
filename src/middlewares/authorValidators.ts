@@ -12,26 +12,33 @@ export const validateCreateAuthor = [
     .isLength({ min: 2, max: 100 })
     .withMessage("PenName must be between 2 to 100 characters long"),
   body("bio").isString().isLength({ max: 500 }).optional(),
-  body("avatar").isURL().optional(),
   body("socialLinks")
     .optional()
     .isObject()
     .withMessage("socialLinks must be an object"),
   body("socialLinks.website")
     .optional()
+    .if(body("socialLinks.website").notEmpty())
     .isURL()
     .withMessage("website must be a valid URL"),
-  body("socialLinks.x").optional().isURL().withMessage("x must be a valid URL"),
+  body("socialLinks.x")
+    .optional()
+    .if(body("socialLinks.x").notEmpty())
+    .isURL()
+    .withMessage("x must be a valid URL"),
   body("socialLinks.instagram")
     .optional()
+    .if(body("socialLinks.instagram").notEmpty())
     .isURL()
     .withMessage("instagram must be a valid URL"),
   body("socialLinks.linkedIn")
     .optional()
+    .if(body("socialLinks.linkedIn").notEmpty())
     .isURL()
     .withMessage("linkedIn must be a valid URL"),
   body("socialLinks.facebook")
     .optional()
+    .if(body("socialLinks.facebook").notEmpty())
     .isURL()
     .withMessage("facebook must be a valid URL"),
   (req: Request, res: Response, next: NextFunction) => {
@@ -54,26 +61,33 @@ export const validateUpdateAuthor = [
     .isLength({ min: 2, max: 100 })
     .withMessage("PenName must be between 2 to 100 characters long"),
   body("bio").optional().isString().isLength({ max: 500 }),
-  body("avatar").optional().isURL(),
   body("socialLinks")
     .optional()
     .isObject()
     .withMessage("socialLinks must be an object"),
   body("socialLinks.website")
     .optional()
+    .if(body("socialLinks.website").notEmpty())
     .isURL()
     .withMessage("website must be a valid URL"),
-  body("socialLinks.x").optional().isURL().withMessage("x must be a valid URL"),
+  body("socialLinks.x")
+    .optional()
+    .if(body("socialLinks.x").notEmpty())
+    .isURL()
+    .withMessage("x must be a valid URL"),
   body("socialLinks.instagram")
     .optional()
+    .if(body("socialLinks.instagram").notEmpty())
     .isURL()
     .withMessage("instagram must be a valid URL"),
   body("socialLinks.linkedIn")
     .optional()
+    .if(body("socialLinks.linkedIn").notEmpty())
     .isURL()
     .withMessage("linkedIn must be a valid URL"),
   body("socialLinks.facebook")
     .optional()
+    .if(body("socialLinks.facebook").notEmpty())
     .isURL()
     .withMessage("facebook must be a valid URL"),
   (req: Request, res: Response, next: NextFunction) => {

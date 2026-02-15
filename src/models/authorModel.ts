@@ -11,7 +11,6 @@ interface SocialLinks {
 interface IAuthor extends Document {
   penName: string;
   bio?: string;
-  avatar?: string;
   socialLinks?: SocialLinks;
   userId: mongoose.Types.ObjectId;
   isVerified: boolean;
@@ -39,34 +38,31 @@ const authorSchema = new Schema<IAuthor>(
       trim: true,
       maxLength: [500, "Bio should not exceed 500 characters"],
     },
-    avatar: {
-      type: String,
-      validate: [validator.isURL, "avatar should be a url"],
-    },
     socialLinks: {
       type: {
         website: {
           type: String,
-          validate: [validator.isURL, "website should be a url"],
         },
         x: {
           type: String,
-          validate: [validator.isURL, "x should be a url"],
         },
         instagram: {
           type: String,
-          validate: [validator.isURL, "instagram should be a url"],
         },
         linkedIn: {
           type: String,
-          validate: [validator.isURL, "linkedIn should be a url"],
         },
         facebook: {
           type: String,
-          validate: [validator.isURL, "facebook should be a url"],
         },
       },
-      default: {},
+      default: {
+        website: "",
+        x: "",
+        instagram: "",
+        linkedIn: "",
+        facebook: "",
+      },
     },
     isVerified: {
       type: Boolean,
