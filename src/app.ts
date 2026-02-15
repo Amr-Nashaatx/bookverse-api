@@ -40,7 +40,7 @@ if (
 }
 
 app.use("/api/auth", authRoutes);
-app.use("/api/user", userRoutes);
+app.use("/api/users", userRoutes);
 app.use("/api/books", bookRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/shelves", shelfRoutes);

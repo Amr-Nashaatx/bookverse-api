@@ -7,7 +7,6 @@ import * as authorService from "../services/authorService.js";
 export type AuthorCreate = {
   penName: string;
   bio?: string;
-  avatar?: string;
   socialLinks?: {
     website?: string;
     x?: string;
@@ -61,7 +60,6 @@ export const findProfileByPenName = asyncHandler(
     response.addResponseData("author", {
       penName: author.penName,
       bio: author.bio,
-      avatar: author.avatar,
       isVerified: author.isVerified,
       totalBooksPublished,
       totalReviews,

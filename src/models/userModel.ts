@@ -7,6 +7,7 @@ export interface IUser extends Document {
   email: string;
   password: string;
   role: "user" | "admin" | "author";
+  avatar: string;
   isAuthor: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -37,6 +38,10 @@ const userSchema = new Schema<IUser>(
     isAuthor: {
       type: Boolean,
       default: false,
+    },
+    avatar: {
+      type: String,
+      validate: [validator.isURL, "avatar must be a valid URL"],
     },
     role: {
       type: String,
