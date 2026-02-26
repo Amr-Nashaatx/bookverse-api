@@ -2,8 +2,11 @@ import { describe, test, expect, beforeAll, beforeEach, vi } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
 import { UserModel } from "../../src/models/userModel.js";
+import { AuthorModel } from "../../src/models/authorModel.js";
 import jwt from "jsonwebtoken";
+
 let authCookie;
+let anotherUserCookie;
 let testBook;
 
 beforeAll(async () => {
@@ -13,9 +16,38 @@ beforeAll(async () => {
     password: "pass1234",
   });
 
+  const anotherUser = await UserModel.create({
+    name: "Nora",
+    email: "nora@test.com",
+    password: "pass1234",
+  });
+
+  // Create authors for the users
+  const author1 = await AuthorModel.create({
+    userId: user._id,
+    penName: "Amr Author",
+    bio: "Test author",
+  });
+
+  const author2 = await AuthorModel.create({
+    userId: anotherUser._id,
+    penName: "Nora Author",
+    bio: "Test author",
+  });
+
+  // Update users with authorId and role using raw update to bypass validation
+  await UserModel.findByIdAndUpdate(user._id, {
+    authorId: author1._id,
+    role: "author",
+  });
+
+  await UserModel.findByIdAndUpdate(anotherUser._id, {
+    authorId: author2._id,
+    role: "author",
+  });
+
   testBook = {
     title: "The Hobbit",
-    author: "J.R.R. Tolkien",
     genre: "Fantasy",
     description: "A story about three hobbits",
     publishedYear: 1937,
@@ -24,16 +56,28 @@ beforeAll(async () => {
   const token = jwt.sign(
     { userId: user._id, email: user.email, name: user.name },
     process.env.JWT_SECRET,
-    { expiresIn: "1h" }
+    { expiresIn: "1h" },
+  );
+
+  const anotherToken = jwt.sign(
+    {
+      userId: anotherUser._id,
+      email: anotherUser.email,
+      name: anotherUser.name,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "1h" },
   );
 
   authCookie = `jwt_token=${token}`;
+  anotherUserCookie = `jwt_token=${anotherToken}`;
 });
 
 describe("Book Routes ", () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
+
   test("POST /api/books should create a book (auth required)", async () => {
     const res = await request(app)
       .post("/api/books")
@@ -42,6 +86,8 @@ describe("Book Routes ", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.data.book).toMatchObject(testBook);
+    expect(res.body.data.book.authorId).toBeDefined();
+    expect(res.body.data.book.status).toBe("draft");
   });
 
   describe("GET /api/books", () => {
@@ -59,6 +105,7 @@ describe("Book Routes ", () => {
 
       expect(books).toHaveLength(1);
       expect(books[0]).toMatchObject(testBook);
+      expect(books[0].authorId).toBeDefined();
 
       expect(pageInfo).toMatchObject({
         hasNextPage: false,
@@ -69,35 +116,29 @@ describe("Book Routes ", () => {
     });
 
     test("paginates forward using after cursor", async () => {
-      // insert 3 books
       const b1 = { ...testBook, title: "AAAAAAAAAAA" };
       const b2 = { ...testBook, title: "BBBBBBBBBB" };
       const b3 = { ...testBook, title: "CCCCCCCCCC" };
+
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
-
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
-
       await request(app).post("/api/books").set("Cookie", authCookie).send(b3);
 
-      // request page 1 (first 2)
       let res = await request(app).get("/api/books?limit=2");
       expect(res.status).toBe(200);
 
       const { books, pageInfo } = res.body.data;
-
       expect(books).toHaveLength(2);
 
       const cursor = pageInfo.nextCursor;
       expect(cursor).toBeTruthy();
 
-      // page 2 using after cursor
       res = await request(app).get(`/api/books?limit=2&after=${cursor}`);
       expect(res.status).toBe(200);
 
       const page2 = res.body.data.books;
-
       expect(page2).toHaveLength(1);
-      expect(page2[0].title).toBe(b1.title); // last remaining book
+      expect(page2[0].title).toBe(b1.title);
     });
 
     test("paginates backward using before cursor", async () => {
@@ -106,45 +147,21 @@ describe("Book Routes ", () => {
       const b3 = { ...testBook, title: "CCCCCCCCCC" };
 
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
-
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
-
       await request(app).post("/api/books").set("Cookie", authCookie).send(b3);
-      // get page 2 cursor
+
       let res = await request(app).get("/api/books?limit=2");
       const cursor = res.body.data.pageInfo.nextCursor;
 
-      // go forward to page 2
       res = await request(app).get(`/api/books?limit=2&after=${cursor}`);
       const beforeCursor = res.body.data.pageInfo.prevCursor;
 
-      // go back to page 1 using before
       res = await request(app).get(`/api/books?limit=2&before=${beforeCursor}`);
-
       const { books, pageInfo } = res.body.data;
 
       expect(pageInfo.hasNextPage).toBe(true);
       expect(pageInfo.hasPrevPage).toBe(false);
-
       expect(books).toHaveLength(2);
-    });
-
-    test("filters by author prefix", async () => {
-      const b1 = { ...testBook, author: "Brandon Sanderson" };
-      const b2 = { ...testBook, author: "Bram Stoker" };
-      const b3 = { ...testBook, author: "Tolstoy" };
-
-      await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
-      await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
-      await request(app).post("/api/books").set("Cookie", authCookie).send(b3);
-
-      const res = await request(app).get("/api/books?author=Br");
-
-      const { books } = res.body.data;
-
-      expect(books).toHaveLength(2);
-      expect(books[0].author).toMatch(/Br/i);
-      expect(books[1].author).toMatch(/Br/i);
     });
 
     test("filters by rating range", async () => {
@@ -173,7 +190,7 @@ describe("Book Routes ", () => {
       await request(app).post("/api/books").set("Cookie", authCookie).send(b3);
 
       const res = await request(app).get(
-        "/api/books?genre[]=Fantasy&genre[]=Sci-Fi"
+        "/api/books?genre[]=Fantasy&genre[]=Sci-Fi",
       );
 
       const genres = res.body.data.books.map((b) => b.genre);
@@ -182,54 +199,72 @@ describe("Book Routes ", () => {
       expect(genres).not.toContain("Horror");
     });
   });
-  test("GET /api/books/my-books", async () => {
-    // PREPARE: create a book for user
+
+  test("GET /api/books/my-books supports status filter and pagination", async () => {
     await request(app)
       .post("/api/books")
       .set("Cookie", authCookie)
-      .send({ ...testBook });
+      .send({ ...testBook, status: "draft" });
 
-    // RUN
-    const getMyBooksRes = await request(app)
-      .get("/api/books/my-books")
+    await request(app)
+      .post("/api/books")
+      .set("Cookie", authCookie)
+      .send({ ...testBook, title: "Published Book", status: "published" });
+
+    const res = await request(app)
+      .get("/api/books/my-books?status=published&page=1&limit=10")
       .set("Cookie", authCookie);
 
-    // Assert
-    expect(getMyBooksRes.status).toBe(200);
-    expect(getMyBooksRes.body.data.books[0]).toMatchObject(testBook);
-  });
-  test("GET /api/books/:id returns one book", async () => {
-    const createRes = await request(app)
-      .post("/api/books")
-      .set("Cookie", authCookie)
-      .send(testBook);
-
-    const id = createRes.body.data.book._id;
-
-    const res = await request(app).get(`/api/books/${id}`);
-
     expect(res.status).toBe(200);
-    expect(res.body.data.book).toMatchObject(testBook);
+    expect(res.body.data.books).toHaveLength(1);
+    expect(res.body.data.books[0].status).toBe("published");
+
+    expect(res.body.data.pageInfo).toMatchObject({
+      total: 1,
+      page: 1,
+      limit: 10,
+      totalPages: 1,
+      hasNextPage: false,
+      hasPrevPage: false,
+    });
   });
 
-  test("PUT /api/books/:id updates a book", async () => {
+  test("GET /api/books/:id returns 200 only when status is published", async () => {
+    const draftRes = await request(app)
+      .post("/api/books")
+      .set("Cookie", authCookie)
+      .send({ ...testBook, title: "Draft Book", status: "draft" });
+
+    const draftId = draftRes.body.data.book._id;
+    const getDraftRes = await request(app).get(`/api/books/${draftId}`);
+    expect(getDraftRes.status).toBe(401);
+
+    const publishedRes = await request(app)
+      .post("/api/books")
+      .set("Cookie", authCookie)
+      .send({ ...testBook, title: "Published Book", status: "published" });
+
+    const publishedId = publishedRes.body.data.book._id;
+    const getPublishedRes = await request(app).get(`/api/books/${publishedId}`);
+    expect(getPublishedRes.status).toBe(200);
+    expect(getPublishedRes.body.data.book.title).toBe("Published Book");
+  });
+
+  test("PUT /api/books/:id denies updates from non-owner", async () => {
     const createRes = await request(app)
       .post("/api/books")
       .set("Cookie", authCookie)
-      .send({ ...testBook });
+      .send({ ...testBook, status: "draft" });
 
     const id = createRes.body.data.book._id;
 
     const res = await request(app)
       .put(`/api/books/${id}`)
-      .set("Cookie", authCookie)
+      .set("Cookie", anotherUserCookie)
       .send({ title: "New Title" });
 
-    expect(res.status).toBe(200);
-    expect(res.body.data.book).toMatchObject({
-      ...testBook,
-      title: "New Title",
-    });
+    expect(res.status).toBe(401);
+    expect(res.body.status).toBe("fail");
   });
 
   test("DELETE /api/books/:id removes a book", async () => {

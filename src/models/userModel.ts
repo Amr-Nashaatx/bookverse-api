@@ -11,6 +11,7 @@ export interface IUser extends Document {
   isAuthor: boolean;
   createdAt: Date;
   updatedAt: Date;
+  authorId: mongoose.Types.ObjectId | Schema.Types.ObjectId;
   _id: mongoose.Types.ObjectId;
 }
 const userSchema = new Schema<IUser>(
@@ -35,10 +36,6 @@ const userSchema = new Schema<IUser>(
       minLength: [8, "Password must be at least 8 characters"],
       select: false,
     },
-    isAuthor: {
-      type: Boolean,
-      default: false,
-    },
     avatar: {
       type: String,
       validate: [validator.isURL, "avatar must be a valid URL"],
@@ -47,6 +44,13 @@ const userSchema = new Schema<IUser>(
       type: String,
       enum: ["user", "admin", "author"],
       default: "user",
+    },
+    authorId: {
+      type: mongoose.Types.ObjectId,
+      ref: "Author",
+      required: function (this: IUser) {
+        return this.role === "author";
+      },
     },
   },
   { timestamps: true },

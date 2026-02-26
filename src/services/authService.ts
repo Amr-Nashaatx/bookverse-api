@@ -1,11 +1,7 @@
 import bcrypt from "bcrypt";
 import { UserModel } from "../models/userModel.js";
 import { AppError } from "../utils/errors/AppError.js";
-import {
-  signAccessToken,
-  sanitizeUser,
-  signRefreshToken,
-} from "../utils/utils.js";
+import { signAccessToken, signRefreshToken } from "../utils/utils.js";
 import { Session } from "../models/session.js";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
@@ -33,7 +29,16 @@ export const registerUser = async (
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
   });
 
-  return { user: sanitizeUser(newUser), token: accessToken, refreshToken };
+  return {
+    user: {
+      id: newUser._id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+    },
+    token: accessToken,
+    refreshToken,
+  };
 };
 
 export const refresh = async (refreshToken: string): Promise<any> => {
@@ -93,7 +98,17 @@ export const loginUser = async (
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
   });
 
-  return { user: sanitizeUser(user), token: acessToken, refreshToken };
+  return {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      authorId: user.authorId,
+    },
+    token: acessToken,
+    refreshToken,
+  };
 };
 
 export const revokeSession = async (sessionId: any): Promise<void> => {

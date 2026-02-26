@@ -1,4 +1,4 @@
-import express, { Router, Request, Response, NextFunction } from "express";
+import express, { Router, Response, NextFunction } from "express";
 import {
   createBookController,
   getBookByIdController,
@@ -15,15 +15,16 @@ import {
 } from "../middlewares/bookValidators.js";
 import { auth } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
+import { isAuthor } from "../middlewares/isAuthorMiddleware.js";
 
 const router: Router = express.Router();
 
 router
   .route("/")
   .get(getBooksController)
-  .post(auth, validateCreateBook, createBookController);
+  .post(auth, upload.single("cover"), validateCreateBook, createBookController);
 
-router.get("/my-books", auth, getMyBooksController);
+router.get("/my-books", auth, isAuthor, getMyBooksController);
 router.get("/genres", getGenresController);
 
 router

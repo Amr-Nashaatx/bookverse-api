@@ -11,7 +11,6 @@ import { APIResponse } from "../utils/response.js";
 import {
   clearTokenCookieOptions,
   refreshTokenCookieOptions,
-  serializeUser,
   tokenCookieOptions,
 } from "../utils/utils.js";
 import { Response, NextFunction } from "express";
@@ -29,7 +28,12 @@ export const register = asyncHandler(
     res.cookie("refresh_token", refreshToken, refreshTokenCookieOptions);
 
     const response = new APIResponse("success", "User registered successfully");
-    response.addResponseData("user", serializeUser(newUser));
+    response.addResponseData("user", {
+      id: newUser.id,
+      name: newUser.name,
+      email: newUser.email,
+      role: newUser.role,
+    });
     res.status(201).json(response);
   },
 );
@@ -43,8 +47,14 @@ export const login = asyncHandler(
     res.cookie("refresh_token", refreshToken, refreshTokenCookieOptions);
 
     const response = new APIResponse("success", "User logged in successfully");
-    response.addResponseData("user", serializeUser(user));
-
+    response.addResponseData("user", {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      authorId: user.authorId,
+    });
+    console.log(response);
     res.status(200).json(response);
   },
 );

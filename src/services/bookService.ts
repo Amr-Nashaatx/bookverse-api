@@ -1,10 +1,11 @@
-import mongoose from "mongoose";
-import { BookModel } from "../models/bookModel.js";
+import mongoose, { SortValues } from "mongoose";
+import { BookModel, Book } from "../models/bookModel.js";
 import { ReviewModel } from "../models/reviewModel.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { fetchPaginatedData } from "../utils/pagination.js";
 import Redis from "ioredis";
 import { CloudinaryProvider } from "./storage/CloundinaryProvider.js";
+import { AuthorModel } from "../models/authorModel.js";
 
 const redis = new Redis({
   host: "redis",
@@ -12,9 +13,26 @@ const redis = new Redis({
 });
 redis.on("error", () => {});
 
-export const createBook = async (data: any) => {
+export const createBook = async (data: Book) => {
   const book = await BookModel.create(data);
   return book;
+};
+
+export const createBookWithCover = async (data: Book, cover: Buffer) => {
+  const book = await BookModel.create(data);
+  const storageProvider = new CloudinaryProvider();
+
+  const result = await storageProvider.uploadImage(cover, "book-covers");
+  const bookWithCover = (await BookModel.findByIdAndUpdate(
+    book._id,
+    {
+      coverImage: result.secure_url,
+      coverPublicId: result.public_id,
+    },
+    { new: true },
+  ))!;
+
+  return bookWithCover;
 };
 
 export const getBooks = async (paginationParameters: any) => {
@@ -22,9 +40,56 @@ export const getBooks = async (paginationParameters: any) => {
   return result;
 };
 
-export const getMyBooks = async (userId: any) => {
-  const myBooks = await BookModel.find({ createdBy: userId });
-  return myBooks;
+export const getMyBooks = async (
+  userId: mongoose.Types.ObjectId,
+  filters: mongoose.FilterQuery<Book> = {},
+  sort: Record<string, 1 | -1> = {},
+  pagination: { page?: number; limit?: number } = {},
+) => {
+  const { page = 1, limit = 10 } = pagination;
+  const skip = (page - 1) * limit;
+  const authorId = (await AuthorModel.findOne({ userId }).select("_id").lean())
+    ?._id;
+
+  const result = await BookModel.aggregate([
+    { $match: { authorId, ...filters } },
+    {
+      $lookup: {
+        from: "authors",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author",
+      },
+    },
+    { $unwind: "$author" },
+    { $sort: Object.keys(sort).length ? sort : { createdAt: 1 } },
+    {
+      $facet: {
+        books: [
+          { $skip: skip },
+          { $limit: limit },
+          { $project: { authorId: 0 } },
+        ],
+        totalCount: [{ $count: "count" }],
+      },
+    },
+  ]);
+
+  const myBooks = result[0].books;
+  const totalCount = result[0].totalCount[0]?.count || 0;
+  const totalPages = Math.ceil(totalCount / limit);
+
+  return {
+    books: myBooks,
+    pageInfo: {
+      total: totalCount,
+      page,
+      limit,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1,
+    },
+  };
 };
 
 export const getGenres = async () => {
@@ -70,8 +135,16 @@ export const getBookById = async (id: string) => {
   return book;
 };
 
-export const updateBook = async (id: string, updates: any) => {
-  const updated = await BookModel.findByIdAndUpdate(id, updates, { new: true });
+export const updateBook = async (
+  id: string,
+  userId: string,
+  updates: Partial<Book>,
+) => {
+  const book = await BookModel.findOne({ id, authorId: userId });
+  if (!book) throw new AppError("UnAuthorized", 401);
+  if (book.status !== "draft")
+    throw new AppError("Book must be in draft to edit", 400);
+  const updated = await BookModel.updateOne({ id }, updates);
   if (!updated) throw new AppError("Book not found", 404);
   return updated;
 };
@@ -118,11 +191,6 @@ export const uploadBookCover = async (id: string, fileBuffer: Buffer) => {
   if (!book) {
     throw new AppError("Book not found", 404);
   }
-
-  if (book.coverPublicId) {
-    await storageProvider.deleteImage(book.coverPublicId);
-  }
-
   const result = await storageProvider.uploadImage(fileBuffer, "book-covers");
 
   const updatedBook = await BookModel.findByIdAndUpdate(

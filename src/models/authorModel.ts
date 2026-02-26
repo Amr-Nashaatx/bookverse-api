@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from "mongoose";
-import validator from "validator";
 
 interface SocialLinks {
   website?: string;

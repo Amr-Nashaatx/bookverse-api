@@ -1,31 +1,35 @@
-import mongoose, { Schema, Document } from "mongoose";
+import mongoose, { Schema, Document, mongo } from "mongoose";
 
-interface IBook extends Document {
+export interface Book {
   title: string;
-  author: string;
+  authorId: Schema.Types.ObjectId | mongoose.Types.ObjectId;
+  chapters: Schema.Types.ObjectId[];
   genre: string;
   isbn?: string;
   publishedYear: number;
   averageRating?: number;
   description?: string;
   coverImage?: string;
-  coverPublicId?: string;
   createdAt: Date;
-  createdBy: mongoose.Types.ObjectId;
+  createdBy: Schema.Types.ObjectId | mongoose.Types.ObjectId;
   updatedAt: Date;
+  status: string;
 }
 
-const bookSchema = new Schema<IBook>(
+interface BookDoc extends Book {}
+interface BookDoc extends Document {}
+
+const bookSchema = new Schema<BookDoc>(
   {
     title: {
       type: String,
       required: true,
       trim: true,
     },
-    author: {
-      type: String,
+    authorId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
       required: true,
-      trim: true,
     },
     genre: {
       type: String,
@@ -34,6 +38,15 @@ const bookSchema = new Schema<IBook>(
     },
     isbn: {
       type: String,
+    },
+    chapters: {
+      type: [Schema.Types.ObjectId],
+      ref: "Chapter",
+    },
+    status: {
+      type: String,
+      enum: ["draft", "preview", "published", "archived"],
+      default: "draft",
     },
     publishedYear: {
       type: Number,
@@ -52,17 +65,9 @@ const bookSchema = new Schema<IBook>(
     coverImage: {
       type: String,
     },
-    coverPublicId: {
-      type: String,
-    },
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
     createdBy: {
-      type: Schema.Types.ObjectId,
+      type: mongoose.Types.ObjectId,
       ref: "User",
-      required: true,
     },
   },
   { timestamps: true },
@@ -73,4 +78,4 @@ bookSchema.index({ averageRating: -1 });
 bookSchema.index({ publishedYear: -1 });
 bookSchema.index({ title: "text", description: "text" });
 
-export const BookModel = mongoose.model<IBook>("Book", bookSchema);
+export const BookModel = mongoose.model<BookDoc>("Book", bookSchema);

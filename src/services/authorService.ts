@@ -14,7 +14,6 @@ export const createAuthorProfile = async (
     userId,
     penName: author.penName,
     bio: author.bio,
-    avatar: author.avatar,
     socialLinks: author.socialLinks,
     status: "pending",
     isVerified: false,
@@ -22,7 +21,7 @@ export const createAuthorProfile = async (
 
   await UserModel.findOneAndUpdate(
     { _id: userId },
-    { role: "author", isAuthor: true },
+    { role: "author", authorId: newAuthorProfile._id },
   );
 
   return newAuthorProfile;
@@ -60,11 +59,9 @@ export const updateAuthorProfile = async (
   userId: mongoose.Types.ObjectId,
   updates: Partial<AuthorCreate>,
 ) => {
-  const updated = await AuthorModel.findOneAndUpdate(
-    { userId },
-    updates,
-    { new: true },
-  );
+  const updated = await AuthorModel.findOneAndUpdate({ userId }, updates, {
+    new: true,
+  });
   if (!updated) throw new AppError("Not found", 404);
   return updated;
 };

@@ -9,41 +9,85 @@ import {
   getGenres,
   uploadBookCover,
   getMyBooks,
+  createBookWithCover,
 } from "../services/bookService.js";
 import { buildBookFilters } from "../utils/filters.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
+import { Book } from "../models/bookModel.js";
+import mongoose, { mongo } from "mongoose";
 
 export const createBookController = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const book = await createBook({ ...req.body, createdBy: userId });
+  async (req: Request, res: Response) => {
+    const authorId = req.user!.authorId;
+    const book = req.body as Book;
+    let createdBook: Awaited<ReturnType<typeof createBook>>;
+    if (req.file) {
+      const buffer = req.file.buffer;
+      createdBook = await createBookWithCover(
+        {
+          ...book,
+          authorId,
+        },
+        buffer,
+      );
+    } else {
+      createdBook = await createBook({
+        ...book,
+        authorId,
+      });
+    }
     const response = new APIResponse("success", "Book created successfully");
-    response.addResponseData("book", book);
+    response.addResponseData("book", createdBook);
     res.status(201).json(response);
   },
 );
 
 export const getMyBooksController = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const myBooks = await getMyBooks(userId);
+  async (req: Request, res: Response) => {
+    const userId = req.user!._id;
+    const allowedStatuses = ["published", "draft"];
+    const query = req.query;
+
+    // Pagination parameters
+    const page = parseInt(query.page as string) || 1;
+    const limit = parseInt(query.limit as string) || 10;
+
+    let filter = {} as mongoose.FilterQuery<Book>;
+    let sort = {} as { [key in string]: 1 | -1 };
+    if (query) {
+      const status = query.status as string;
+      const sortBy = query.sortBy as string;
+      if (status && allowedStatuses.includes(status)) filter["status"] = status;
+      switch (sortBy) {
+        case "title":
+          sort["title"] = 1;
+        case "status":
+          sort["status"] = 1;
+      }
+    }
+    const { books, pageInfo } = await getMyBooks(userId, filter, sort, {
+      page,
+      limit,
+    });
     const response = new APIResponse(
       "success",
       "Fetched your books successfully",
     );
-    response.addResponseData("books", myBooks);
+    response.addResponseData("books", books);
+    response.addResponseData("pageInfo", pageInfo);
     res.status(200).json(response);
   },
 );
 
 export const uploadBookCoverController = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     if (!req.file) {
       throw new AppError("No image uploaded", 400);
     }
-
-    const updatedBook = await uploadBookCover(req.params.id, req.file.buffer);
+    const bookId = req.params.id;
+    const buffer = req.file.buffer;
+    const updatedBook = await uploadBookCover(bookId, buffer);
 
     const response = new APIResponse(
       "success",
@@ -77,8 +121,10 @@ export const getBooksController = asyncHandler(
 );
 
 export const getBookByIdController = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const book = await getBookById(req.params.id);
+  async (req: Request, res: Response) => {
+    const bookId = req.params.id;
+    const book = await getBookById(bookId);
+    if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
     const response = new APIResponse("success", "Book fetched successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
@@ -86,8 +132,11 @@ export const getBookByIdController = asyncHandler(
 );
 
 export const updateBookController = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
-    const book = await updateBook(req.params.id, req.body);
+  async (req: Request, res: Response) => {
+    const bookId = req.params.id;
+    const userId = req.user!._id;
+    const bookUpdate = req.body as Book;
+    const book = await updateBook(bookId, userId.toString(), bookUpdate);
     const response = new APIResponse("success", "Book Updated successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
@@ -95,7 +144,7 @@ export const updateBookController = asyncHandler(
 );
 
 export const deleteBookController = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
+  async (req: Request, res: Response) => {
     await deleteBook(req.params.id);
     res
       .status(200)

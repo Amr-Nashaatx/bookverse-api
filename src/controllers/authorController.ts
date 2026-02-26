@@ -16,35 +16,37 @@ export type AuthorCreate = {
   };
 };
 
-export const createProfile = asyncHandler(async (req: any, res: Response) => {
-  const authorData = req.body as AuthorCreate;
-  const userId = req.user!._id;
+export const createProfile = asyncHandler(
+  async (req: Request, res: Response) => {
+    const authorData = req.body as AuthorCreate;
+    const userId = req.user!._id;
 
-  if (req.user?.isAuthor) {
-    throw new AppError("User already has an author profile", 400);
-  }
+    if (req.user?.role === "author") {
+      throw new AppError("User already has an author profile", 400);
+    }
 
-  const isUnique = await authorService.isPenNameUnique(authorData.penName);
-  if (!isUnique) {
-    throw new AppError("Pen name must be unique", 400);
-  }
+    const isUnique = await authorService.isPenNameUnique(authorData.penName);
+    if (!isUnique) {
+      throw new AppError("Pen name must be unique", 400);
+    }
 
-  const newAuthorProfile = await authorService.createAuthorProfile(
-    userId,
-    authorData,
-  );
-  const response = new APIResponse(
-    "success",
-    "Author profile created successfully",
-  );
-  response.addResponseData("author", {
-    _id: newAuthorProfile._id,
-    userId,
-    penName: newAuthorProfile.penName,
-    status: newAuthorProfile.status,
-  });
-  res.status(201).json(response);
-});
+    const newAuthorProfile = await authorService.createAuthorProfile(
+      userId,
+      authorData,
+    );
+    const response = new APIResponse(
+      "success",
+      "Author profile created successfully",
+    );
+    response.addResponseData("author", {
+      _id: newAuthorProfile._id,
+      userId,
+      penName: newAuthorProfile.penName,
+      status: newAuthorProfile.status,
+    });
+    res.status(201).json(response);
+  },
+);
 
 export const findProfileByPenName = asyncHandler(
   async (req: Request, res: Response) => {
@@ -70,17 +72,18 @@ export const findProfileByPenName = asyncHandler(
 );
 
 export const findCurrentUserProfile = asyncHandler(
-  async (req: any, res: Response) => {
-    if (!req.user?.isAuthor) {
+  async (req: Request, res: Response) => {
+    const userId = req.user!._id;
+    if (!(req.user?.role === "author")) {
       throw new AppError("Author profile not found", 404);
     }
 
-    const author = await authorService.findAuthorByUserId(req.user._id);
+    const author = await authorService.findAuthorByUserId(userId.toString());
     const totalBooksPublished = await authorService.countBooksPublishedBy(
-      req.user._id.toString(),
+      userId.toString(),
     );
     const totalReviews = await authorService.countReviewsForAuthor(
-      req.user._id.toString(),
+      userId.toString(),
     );
     const response = new APIResponse("success", "Author fetched");
     response.addResponseData("author", {
@@ -93,12 +96,15 @@ export const findCurrentUserProfile = asyncHandler(
 );
 
 export const updateCurrentUserProfile = asyncHandler(
-  async (req: any, res: Response) => {
-    if (!req.user?.isAuthor) {
+  async (req: Request, res: Response) => {
+    const userId = req.user!._id;
+    if (!(req.user?.role === "author")) {
       throw new AppError("Author profile not found", 404);
     }
 
-    const currentProfile = await authorService.findAuthorByUserId(req.user._id);
+    const currentProfile = await authorService.findAuthorByUserId(
+      userId.toString(),
+    );
     if (req.body?.penName && req.body.penName !== currentProfile.penName) {
       const isUnique = await authorService.isPenNameUnique(req.body.penName);
       if (!isUnique) {

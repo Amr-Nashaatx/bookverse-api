@@ -17,13 +17,6 @@ export const validateCreateBook = [
     .withMessage("description cannot be empty")
     .isLength({ max: 220 })
     .withMessage("Name must be at max 220 characters long"),
-  body("author")
-    .isString()
-    .withMessage("author cannot be numbers")
-    .notEmpty()
-    .withMessage("author cannot be empty")
-    .isLength({ min: 3, max: 30 })
-    .withMessage("author must be between 3 to 30 characters long"),
   body("genre")
     .isString()
     .withMessage("genre cannot be numbers")
