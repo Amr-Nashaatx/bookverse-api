@@ -4,10 +4,8 @@ export interface IChapter extends Document {
   bookId: mongoose.Types.ObjectId;
   title: string;
   content: string;
-  order: number;
   status: "draft" | "published";
   wordCount: number;
-  editedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -85,7 +83,5 @@ chapterSchema.pre(
     next();
   },
 );
-
-chapterSchema.index({ bookId: 1, order: 1 }, { unique: true });
 
 export const ChapterModel = mongoose.model<IChapter>("Chapter", chapterSchema);

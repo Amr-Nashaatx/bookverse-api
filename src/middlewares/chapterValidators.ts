@@ -29,9 +29,6 @@ export const validateCreateChapter = [
     .trim()
     .isLength({ min: 100 })
     .withMessage("content must be at least 100 characters"),
-  body("order")
-    .isInt({ min: 1 })
-    .withMessage("order must be an integer greater than or equal to 1"),
   handleValidation,
 ];
 
@@ -87,11 +84,8 @@ export const validateReorderChapters = [
   body("chapters")
     .isArray({ min: 1 })
     .withMessage("chapters must be a non-empty array"),
-  body("chapters.*._id")
+  body("chapters.*")
     .isMongoId()
-    .withMessage("each chapter _id must be a valid Mongo id"),
-  body("chapters.*.newOrder")
-    .isInt({ min: 1 })
-    .withMessage("each newOrder must be an integer greater than or equal to 1"),
+    .withMessage("each chapter id must be a valid Mongo id"),
   handleValidation,
 ];

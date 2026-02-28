@@ -1,5 +1,5 @@
-import mongoose, { HydratedDocument, UpdateQuery } from "mongoose";
-import { Book, BookModel } from "../models/bookModel.js";
+import mongoose from "mongoose";
+import { BookModel } from "../models/bookModel.js";
 import { ChapterModel, IChapter } from "../models/chapterModel.js";
 import { IUser } from "../models/userModel.js";
 import { AppError } from "../utils/errors/AppError.js";
@@ -7,7 +7,6 @@ import { AppError } from "../utils/errors/AppError.js";
 type ChapterPayload = {
   title: string;
   content: string;
-  order?: number;
 };
 
 type ChapterUpdatePayload = {
@@ -46,20 +45,7 @@ export const createChapter = async (
 
   if (!chapter) throw new Error("Chapter creation failed");
 
-  let pushUpdate: UpdateQuery<Book>;
-  if (chapter.order) {
-    pushUpdate = {
-      $push: {
-        chapters: {
-          $each: [chapter._id],
-          $position: chapter.order,
-        },
-      },
-    };
-  } else {
-    pushUpdate = { $push: { chapters: chapter._id } };
-  }
-  await BookModel.findByIdAndUpdate(book._id, pushUpdate);
+  await BookModel.findByIdAndUpdate(book._id, { $push: { chapters: chapter._id } });
 
   return chapter;
 };
@@ -80,11 +66,18 @@ export const listChapters = async (
   }
 
   const chapters = await ChapterModel.find(query)
-    .select("_id title order wordCount status editedAt")
-    .sort({ order: 1 })
+    .select("_id title wordCount status")
     .lean();
 
-  return chapters;
+  const orderMap = new Map(
+    book.chapters.map((chapterId, index) => [chapterId.toString(), index]),
+  );
+
+  return chapters.sort((a, b) => {
+    const aIndex = orderMap.get(a._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+    const bIndex = orderMap.get(b._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+    return aIndex - bIndex;
+  });
 };
 
 export const getChapterById = async (
@@ -179,7 +172,6 @@ export const reorderChapters = async (
   await book.updateOne({ $set: { chapters: newOrderIds } });
 
   return ChapterModel.find({ bookId: book._id })
-    .select("_id title order wordCount status editedAt")
-    .sort({ order: 1 })
+    .select("_id title wordCount status")
     .lean();
 };
