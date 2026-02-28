@@ -16,6 +16,7 @@ import {
 import { auth } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
 import { isAuthor } from "../middlewares/isAuthorMiddleware.js";
+import chapterRoutes from "./chapterRoutes.js";
 
 const router: Router = express.Router();
 
@@ -39,5 +40,7 @@ router.post(
   upload.single("cover"),
   uploadBookCoverController,
 );
+
+router.use("/:bookId/chapters", chapterRoutes);
 
 export default router;

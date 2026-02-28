@@ -32,11 +32,6 @@ const chapterSchema = new Schema<IChapter>(
       trim: true,
       minlength: 100,
     },
-    order: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
     status: {
       type: String,
       enum: ["draft", "published"],
@@ -46,9 +41,6 @@ const chapterSchema = new Schema<IChapter>(
       type: Number,
       default: 0,
       min: 0,
-    },
-    editedAt: {
-      type: Date,
     },
   },
   { timestamps: true },
@@ -61,11 +53,6 @@ function calculateWordCount(content: string): number {
 
 chapterSchema.pre("save", function (next) {
   this.wordCount = calculateWordCount(this.content || "");
-
-  if (this.isModified("content") && !this.isNew) {
-    this.editedAt = new Date();
-  }
-
   next();
 });
 
@@ -91,7 +78,6 @@ chapterSchema.pre(
           ...(set || {}),
           content,
           wordCount: calculateWordCount(content),
-          editedAt: new Date(),
         },
       });
     }
