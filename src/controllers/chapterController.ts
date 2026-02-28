@@ -18,7 +18,6 @@ export const createChapterController = asyncHandler(
       _id: chapter._id,
       bookId: chapter.bookId,
       title: chapter.title,
-      order: chapter.order,
       wordCount: chapter.wordCount,
       status: chapter.status,
       createdAt: chapter.createdAt,
@@ -34,7 +33,10 @@ export const listChaptersController = asyncHandler(
       req.user,
       req.query.status as "draft" | "published" | undefined,
     );
-    const response = new APIResponse("success", "Chapters fetched successfully");
+    const response = new APIResponse(
+      "success",
+      "Chapters fetched successfully",
+    );
     response.addResponseData("chapters", chapters);
     res.status(200).json(response);
   },
@@ -78,8 +80,15 @@ export const deleteChapterController = asyncHandler(
 
 export const reorderChaptersController = asyncHandler(
   async (req: Request, res: Response) => {
-    const chapters = await reorderChapters(req.params.bookId, req.user, req.body.chapters);
-    const response = new APIResponse("success", "Chapters reordered successfully");
+    const chapters = await reorderChapters(
+      req.params.bookId,
+      req.user,
+      req.body.chapters,
+    );
+    const response = new APIResponse(
+      "success",
+      "Chapters reordered successfully",
+    );
     response.addResponseData("chapters", chapters);
     res.status(200).json(response);
   },
