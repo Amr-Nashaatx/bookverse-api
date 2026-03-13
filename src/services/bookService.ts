@@ -1,4 +1,4 @@
-import mongoose, { SortValues } from "mongoose";
+import mongoose from "mongoose";
 import { BookModel, Book } from "../models/bookModel.js";
 import { ReviewModel } from "../models/reviewModel.js";
 import { AppError } from "../utils/errors/AppError.js";
@@ -145,6 +145,51 @@ export const updateBook = async (
   if (book.status !== "draft")
     throw new AppError("Book must be in draft to edit", 400);
   const updated = await BookModel.updateOne({ id }, updates);
+  if (!updated) throw new AppError("Book not found", 404);
+  return updated;
+};
+
+export const updateBookStatus = async (
+  id: string,
+  authorId: string,
+  status: string,
+) => {
+  const book = await BookModel.findOne({ _id: id, authorId });
+
+  if (!book) throw new AppError("UnAuthorized", 401);
+
+  const oldStatus = book.status;
+  const validTransitions: Record<string, string[]> = {
+    draft: ["preview"],
+    preview: ["published", "archived"],
+    published: ["archived"],
+    archived: [],
+  };
+
+  if (!validTransitions[oldStatus])
+    throw new AppError("Invalid current status", 400);
+  if (!validTransitions[oldStatus].includes(status))
+    throw new AppError(`Cannot transition from ${oldStatus} to ${status}`, 400);
+
+  // Check if transitioning from draft to preview - must have chapters with content
+  if (oldStatus === "draft" && status === "preview") {
+    const chaptersWithContent = book.chapters && book.chapters.length > 0;
+    if (!chaptersWithContent) {
+      throw new AppError("Book must have at least 1 chapter with content", 400);
+    }
+  }
+
+  const updateData: any = { status };
+
+  // Only set publishedAt when transitioning to published
+  if (status === "published") {
+    updateData.publishedAt = new Date();
+  }
+
+  const updated = await BookModel.findByIdAndUpdate(id, updateData, {
+    new: true,
+  });
+
   if (!updated) throw new AppError("Book not found", 404);
   return updated;
 };

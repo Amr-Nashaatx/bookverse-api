@@ -9,3 +9,10 @@ export const isAuthor = asyncHandler(
     next();
   },
 );
+
+export const isAuthorOrAdmin = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    if (req.user?.role == "author" || req.user?.role == "admin") next();
+    else throw new AppError("User must be an author", 403);
+  },
+);

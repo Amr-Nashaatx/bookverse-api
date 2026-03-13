@@ -85,3 +85,18 @@ export const validateUpdateBook = [
     next();
   },
 ];
+
+export const validateUpdateBookStatus = [
+  body("status")
+    .isString()
+    .not()
+    .isEmpty()
+    .withMessage("status should be a non empty string"),
+  (req: Request, res: Response, next: NextFunction) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      throw new AppError("Validation failed", 400, errors.array() as any);
+    }
+    next();
+  },
+];

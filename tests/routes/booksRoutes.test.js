@@ -4,6 +4,7 @@ import app from "../../src/app.js";
 import { UserModel } from "../../src/models/userModel.js";
 import { AuthorModel } from "../../src/models/authorModel.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 let authCookie;
 let anotherUserCookie;
@@ -280,5 +281,205 @@ describe("Book Routes ", () => {
       .set("Cookie", authCookie);
 
     expect(res.status).toBe(200);
+  });
+
+  describe("PUT /api/books/:id/status - Update Book Status", () => {
+    let bookId;
+    let authorId;
+
+    beforeEach(async () => {
+      // Create a book for testing
+      const res = await request(app)
+        .post("/api/books")
+        .set("Cookie", authCookie)
+        .send(testBook);
+
+      bookId = res.body.data.book._id;
+      authorId = res.body.data.book.authorId;
+
+      // Create a chapter for the book so it can transition to preview
+      await request(app)
+        .post(`/api/books/${bookId}/chapters`)
+        .set("Cookie", authCookie)
+        .send({
+          title: "Chapter 1",
+          content:
+            "This is test chapter content that is long enough to satisfy the minimum character requirement for the content field",
+        });
+    });
+
+    test("should reject status update without authentication", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .send({ status: "preview" });
+
+      expect(res.status).toBe(401);
+    });
+
+    test("should reject status update by non-owner user", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", anotherUserCookie)
+        .send({ status: "preview" });
+
+      expect(res.status).toBe(401);
+    });
+
+    test("should reject invalid status value", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "invalid_status" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Cannot transition|Invalid status/i);
+    });
+
+    test("should allow DRAFT -> PREVIEW transition", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.book.status).toBe("preview");
+    });
+
+    test("should reject DRAFT -> PUBLISHED transition", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "published" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Invalid status|Cannot transition/i);
+    });
+
+    test("should reject DRAFT -> ARCHIVED transition", async () => {
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "archived" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Invalid status|Cannot transition/i);
+    });
+
+    test("should allow PREVIEW -> PUBLISHED transition and set publishedAt", async () => {
+      // First transition to preview
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      // Then transition to published
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "published" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.book.status).toBe("published");
+      expect(res.body.data.book.publishedAt).toBeDefined();
+      expect(new Date(res.body.data.book.publishedAt).getTime()).toBeCloseTo(
+        Date.now(),
+        -2,
+      ); // within ~100ms
+    });
+
+    test("should allow PREVIEW -> ARCHIVED transition", async () => {
+      // First transition to preview
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      // Then transition to archived
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "archived" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.book.status).toBe("archived");
+    });
+
+    test("should allow PUBLISHED -> ARCHIVED transition", async () => {
+      // Setup: draft -> preview -> published
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "published" });
+
+      // Now archive it
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "archived" });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.book.status).toBe("archived");
+    });
+
+    test("should reject PUBLISHED -> DRAFT transition (no backward)", async () => {
+      // Setup: draft -> preview -> published
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "published" });
+
+      // Try to go back to draft
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "draft" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Invalid status|Cannot transition/i);
+    });
+
+    test("should reject ARCHIVED -> PREVIEW transition", async () => {
+      // Setup: draft -> preview -> archived
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "archived" });
+
+      // Try to transition from archived
+      const res = await request(app)
+        .put(`/api/books/${bookId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(
+        /Cannot transition|no transitions allowed/i,
+      );
+    });
+
+    test("should return 401 for non-existent book (security: don't leak book existence)", async () => {
+      const fakeId = new mongoose.Types.ObjectId();
+      const res = await request(app)
+        .put(`/api/books/${fakeId}/status`)
+        .set("Cookie", authCookie)
+        .send({ status: "preview" });
+
+      expect(res.status).toBe(401);
+    });
   });
 });

@@ -10,7 +10,9 @@ const handleValidation = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-const validateBookIdParam = param("bookId").isMongoId().withMessage("Invalid bookId");
+const validateBookIdParam = param("bookId")
+  .isMongoId()
+  .withMessage("Invalid bookId");
 const validateChapterIdParam = param("chapterId")
   .isMongoId()
   .withMessage("Invalid chapterId");
@@ -24,6 +26,7 @@ export const validateCreateChapter = [
     .isLength({ min: 1, max: 200 })
     .withMessage("title must be between 1 and 200 characters"),
   body("content")
+    .optional()
     .isString()
     .withMessage("content must be a string")
     .trim()
@@ -57,15 +60,15 @@ export const validateUpdateChapter = [
     .trim()
     .isLength({ min: 1, max: 200 })
     .withMessage("title must be between 1 and 200 characters"),
-  body("content")
-    .optional()
-    .isString()
-    .withMessage("content must be a string")
-    .trim()
-    .isLength({ min: 100 })
-    .withMessage("content must be at least 100 characters"),
+  body("content").optional().isJSON().withMessage("content must json string"),
+  body("wordCount").optional().isInt(),
   body().custom((value) => {
-    if (!value || (typeof value === "object" && !("title" in value) && !("content" in value))) {
+    if (
+      !value ||
+      (typeof value === "object" &&
+        !("title" in value) &&
+        !("content" in value))
+    ) {
       throw new Error("At least one of title or content must be provided");
     }
     return true;

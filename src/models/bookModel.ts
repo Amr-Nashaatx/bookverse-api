@@ -10,10 +10,9 @@ export interface Book {
   averageRating?: number;
   description?: string;
   coverImage?: string;
-  createdAt: Date;
   createdBy: Schema.Types.ObjectId | mongoose.Types.ObjectId;
-  updatedAt: Date;
   status: string;
+  publishedAt: Date;
 }
 
 interface BookDoc extends Book {}
@@ -64,6 +63,9 @@ const bookSchema = new Schema<BookDoc>(
     },
     coverImage: {
       type: String,
+    },
+    publishedAt: {
+      type: Date,
     },
     createdBy: {
       type: mongoose.Types.ObjectId,

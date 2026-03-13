@@ -1,4 +1,4 @@
-import express, { Router, Response, NextFunction } from "express";
+import express, { Router } from "express";
 import {
   createBookController,
   getBookByIdController,
@@ -8,14 +8,19 @@ import {
   getGenresController,
   uploadBookCoverController,
   getMyBooksController,
+  updateBookStatusController,
 } from "../controllers/bookController.js";
 import {
   validateCreateBook,
   validateUpdateBook,
+  validateUpdateBookStatus,
 } from "../middlewares/bookValidators.js";
 import { auth } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
-import { isAuthor } from "../middlewares/isAuthorMiddleware.js";
+import {
+  isAuthor,
+  isAuthorOrAdmin,
+} from "../middlewares/isAuthorMiddleware.js";
 import chapterRoutes from "./chapterRoutes.js";
 
 const router: Router = express.Router();
@@ -33,6 +38,14 @@ router
   .get(getBookByIdController)
   .put(auth, validateUpdateBook, updateBookController)
   .delete(auth, deleteBookController);
+
+router.put(
+  "/:id/status",
+  auth,
+  isAuthorOrAdmin,
+  validateUpdateBookStatus,
+  updateBookStatusController,
+);
 
 router.post(
   "/:id/cover",

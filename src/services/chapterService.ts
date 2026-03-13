@@ -6,7 +6,7 @@ import { AppError } from "../utils/errors/AppError.js";
 
 type ChapterPayload = {
   title: string;
-  content: string;
+  content?: string;
 };
 
 type ChapterUpdatePayload = {
@@ -45,7 +45,9 @@ export const createChapter = async (
 
   if (!chapter) throw new Error("Chapter creation failed");
 
-  await BookModel.findByIdAndUpdate(book._id, { $push: { chapters: chapter._id } });
+  await BookModel.findByIdAndUpdate(book._id, {
+    $push: { chapters: chapter._id },
+  });
 
   return chapter;
 };

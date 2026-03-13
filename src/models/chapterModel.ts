@@ -3,7 +3,7 @@ import mongoose, { Document, UpdateQuery, Query, Schema } from "mongoose";
 export interface IChapter extends Document {
   bookId: mongoose.Types.ObjectId;
   title: string;
-  content: string;
+  content?: any;
   status: "draft" | "published";
   wordCount: number;
   createdAt: Date;
@@ -25,10 +25,8 @@ const chapterSchema = new Schema<IChapter>(
       maxlength: 200,
     },
     content: {
-      type: String,
-      required: true,
-      trim: true,
-      minlength: 100,
+      type: Schema.Types.Mixed,
+      required: false,
     },
     status: {
       type: String,
@@ -44,16 +42,6 @@ const chapterSchema = new Schema<IChapter>(
   { timestamps: true },
 );
 
-function calculateWordCount(content: string): number {
-  const words = content.trim().match(/\S+/g);
-  return words ? words.length : 0;
-}
-
-chapterSchema.pre("save", function (next) {
-  this.wordCount = calculateWordCount(this.content || "");
-  next();
-});
-
 chapterSchema.pre(
   ["findOneAndUpdate", "updateOne", "updateMany"],
   function (this: Query<any, IChapter>, next) {
@@ -62,20 +50,19 @@ chapterSchema.pre(
     if (!update) {
       return next();
     }
-    const directContent =
-      typeof update.content === "string" ? update.content : undefined;
+    const directContent = update.content;
+    const wordCount = update.wordCount;
     const set = update.$set as Record<string, unknown> | undefined;
-    const setContent =
-      typeof set?.content === "string" ? set.content : undefined;
+    const setContent = set?.content;
     const content = directContent ?? setContent;
 
-    if (typeof content === "string") {
+    if (content !== undefined) {
       this.setUpdate({
         ...update,
         $set: {
           ...(set || {}),
           content,
-          wordCount: calculateWordCount(content),
+          wordCount: wordCount ?? -1,
         },
       });
     }

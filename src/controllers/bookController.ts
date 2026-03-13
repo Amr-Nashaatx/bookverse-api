@@ -5,6 +5,7 @@ import {
   getBooks,
   getBookById,
   updateBook,
+  updateBookStatus,
   deleteBook,
   getGenres,
   uploadBookCover,
@@ -15,7 +16,7 @@ import { buildBookFilters } from "../utils/filters.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
 import { Book } from "../models/bookModel.js";
-import mongoose, { mongo } from "mongoose";
+import mongoose from "mongoose";
 
 export const createBookController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -138,6 +139,21 @@ export const updateBookController = asyncHandler(
     const bookUpdate = req.body as Book;
     const book = await updateBook(bookId, userId.toString(), bookUpdate);
     const response = new APIResponse("success", "Book Updated successfully");
+    response.addResponseData("book", book);
+    res.status(200).json(response);
+  },
+);
+
+export const updateBookStatusController = asyncHandler(
+  async (req: Request, res: Response) => {
+    const bookId = req.params.id;
+    const authorId = req.user!.authorId;
+    const { status } = req.body;
+    const book = await updateBookStatus(bookId, authorId.toString(), status);
+    const response = new APIResponse(
+      "success",
+      "Book status updated successfully",
+    );
     response.addResponseData("book", book);
     res.status(200).json(response);
   },
