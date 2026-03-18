@@ -1,35 +1,100 @@
-export const fetchPaginatedData = async (
-  Model: any,
-  { filters = {}, after = null, before = null, limit = 10, sort = "-_id" }: any,
-  queryOptions: any = {},
-): Promise<any> => {
+import mongoose from "mongoose";
+
+type CursorValue = string | number | Date | mongoose.Types.ObjectId | null;
+
+type CursorPaginationFilters = Record<string, unknown>;
+
+export type CursorPaginationParams<
+  TFilters extends CursorPaginationFilters = CursorPaginationFilters,
+> = {
+  filters?: TFilters;
+  after?: CursorValue;
+  before?: CursorValue;
+  limit?: number;
+  sort?: string;
+};
+
+export type FetchPaginatedQueryOptions = {
+  findCriteria?: {
+    fieldName: string;
+    value: unknown;
+  };
+  populate?: [path: string, select?: string] | string[];
+  aggregate?: Array<{
+    from: string;
+    localField: string;
+    foreignField: string;
+    as: string;
+  }>;
+};
+
+export type PaginatedPageInfo<TCursor = CursorValue> = {
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+  nextCursor: TCursor;
+  prevCursor: TCursor;
+};
+
+export type PaginatedResult<
+  TCollectionName extends string,
+  TDocument,
+  TCursor = CursorValue,
+> = {
+  [K in TCollectionName]: TDocument[];
+} & {
+  pageInfo: PaginatedPageInfo<TCursor>;
+};
+
+export const fetchPaginatedData = async <
+  TRawDoc,
+  TCollectionName extends string,
+  TFilters extends CursorPaginationFilters = CursorPaginationFilters,
+>(
+  Model: mongoose.Model<TRawDoc> & { collection: { name: TCollectionName } },
+  {
+    filters = {} as TFilters,
+    after = null,
+    before = null,
+    limit = 10,
+    sort = "-_id",
+  }: CursorPaginationParams<TFilters>,
+  queryOptions: FetchPaginatedQueryOptions = {},
+): Promise<
+  PaginatedResult<TCollectionName, mongoose.HydratedDocument<TRawDoc>>
+> => {
+  const mutableFilters = { ...filters } as Record<string, unknown>;
+
   const [field, direction] = sort.startsWith("-")
-    ? [sort.substring(1), -1]
-    : [sort, 1];
+    ? [sort.substring(1), -1 as const]
+    : [sort, 1 as const];
 
   const isAfterExists = !!after;
   const isBeforeExists = !!before;
   const isNoCursorSet = !after && !before;
 
   const isBackward = isBeforeExists && !isAfterExists;
-  const isForward = isAfterExists || isNoCursorSet; // treat "no cursors" as forward (first page)
+  const isForward = isAfterExists || isNoCursorSet;
 
-  if (isForward && isAfterExists)
-    filters[field] = direction === 1 ? { $gt: after } : { $lt: after };
+  if (isForward && isAfterExists) {
+    mutableFilters[field] = direction === 1 ? { $gt: after } : { $lt: after };
+  }
 
-  if (isBackward)
-    filters[field] = direction === 1 ? { $lt: before } : { $gt: before };
+  if (isBackward) {
+    mutableFilters[field] = direction === 1 ? { $lt: before } : { $gt: before };
+  }
 
-  const dbSort = isBackward ? -direction : direction; // allign sort and filter range for efficient index scan.
+  const dbSort = (isBackward ? -direction : direction) as mongoose.SortOrder;
 
   if (queryOptions.findCriteria) {
-    filters[queryOptions.findCriteria.fieldName] =
+    mutableFilters[queryOptions.findCriteria.fieldName] =
       queryOptions.findCriteria.value;
   }
-  let query = Model.find(filters);
+
+  let query = Model.find(mutableFilters);
 
   if (queryOptions.populate) {
-    query = query.populate(queryOptions.populate[0], queryOptions.populate[1]);
+    const [path, select] = queryOptions.populate;
+    query = query.populate(path, select);
   }
 
   let queryResult = await query
@@ -39,29 +104,31 @@ export const fetchPaginatedData = async (
   const hasMore = queryResult.length > limit;
   if (hasMore) queryResult.pop();
 
-  // If we fetched in reverse for backward, flip back to user-visible order
   queryResult = isBackward ? queryResult.reverse() : queryResult;
 
-  let hasNextPage = false,
-    hasPrevPage = false;
+  let hasNextPage = false;
+  let hasPrevPage = false;
 
   if (isBackward) {
-    hasPrevPage = hasMore; // more older items beyond the window
-    hasNextPage = true; // since you moved back, you're not at the end
+    hasPrevPage = hasMore;
+    hasNextPage = true;
   } else {
-    hasNextPage = hasMore; // more newer items ahead
-    hasPrevPage = !!after; // if you came from a previous page
+    hasNextPage = hasMore;
+    hasPrevPage = !!after;
   }
 
   const firstItem = queryResult[0];
   const lastItem = queryResult[queryResult.length - 1];
+  const getCursorValue = (doc?: mongoose.HydratedDocument<TRawDoc>) =>
+    doc ? (doc.get(field) as CursorValue) : null;
+
   return {
     [Model.collection.name]: queryResult,
     pageInfo: {
-      hasNextPage, // forward pagination or first page
-      hasPrevPage, // anything after first page
-      nextCursor: lastItem ? lastItem[field] : null,
-      prevCursor: firstItem ? firstItem[field] : null,
+      hasNextPage,
+      hasPrevPage,
+      nextCursor: getCursorValue(lastItem),
+      prevCursor: getCursorValue(firstItem),
     },
-  };
+  } as PaginatedResult<TCollectionName, mongoose.HydratedDocument<TRawDoc>>;
 };

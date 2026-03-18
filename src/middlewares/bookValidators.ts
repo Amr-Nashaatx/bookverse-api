@@ -26,8 +26,9 @@ export const validateCreateBook = [
     .withMessage("genre must be between 3 to 30characters long"),
   body("publishedYear")
     .notEmpty()
-    .withMessage("publishedYear must be provided")
-    .isNumeric(),
+    .withMessage("published year must be provided")
+    .isInt({ min: 1450 })
+    .withMessage("Published year is too low"),
 
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
@@ -75,8 +76,8 @@ export const validateUpdateBook = [
     .notEmpty()
     .optional()
     .withMessage("publishedYear must be provided")
-    .isNumeric(),
-
+    .isInt({ min: 1450 })
+    .withMessage("Published year is too low"),
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

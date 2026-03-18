@@ -9,7 +9,8 @@ import {
   addBookToShelf,
   removeBookFromShelf,
 } from "../services/shelfService.js";
-import { Response, NextFunction } from "express";
+import { Request, Response, NextFunction } from "express";
+import mongoose from "mongoose";
 
 export const createShelfController = asyncHandler(
   async (req: any, res: Response, next: NextFunction) => {
@@ -32,9 +33,10 @@ export const getShelvesController = asyncHandler(
 );
 
 export const getShelfByIdController = asyncHandler(
-  async (req: any, res: Response, next: NextFunction) => {
-    const userId = req.user._id;
-    const shelf = await getShelfById(userId, req.params.id);
+  async (req: Request, res: Response, next: NextFunction) => {
+    const userId = req.user!._id;
+    const shelfId = new mongoose.Types.ObjectId(req.params.id);
+    const shelf = await getShelfById(userId, shelfId);
     const response = new APIResponse("success", "Shelf fetched successfully");
     response.addResponseData("shelf", shelf);
     res.status(200).json(response);

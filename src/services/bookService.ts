@@ -36,7 +36,9 @@ export const createBookWithCover = async (data: Book, cover: Buffer) => {
 };
 
 export const getBooks = async (paginationParameters: any) => {
-  const result = fetchPaginatedData(BookModel, paginationParameters);
+  const result = await fetchPaginatedData(BookModel, paginationParameters, {
+    populate: ["authorId", "penName"],
+  });
   return result;
 };
 
@@ -130,17 +132,32 @@ export const getGenres = async () => {
 };
 
 export const getBookById = async (id: string) => {
-  const book = await BookModel.findById(id);
+  const book = await BookModel.aggregate([
+    {
+      $match: { _id: new mongoose.Types.ObjectId(id) },
+    },
+    {
+      $lookup: {
+        from: "authors",
+        localField: "authorId",
+        foreignField: "_id",
+        as: "author",
+      },
+    },
+  ]);
   if (!book) throw new AppError("Book not found", 404);
-  return book;
+  return book[0];
 };
 
 export const updateBook = async (
   id: string,
-  userId: string,
+  authorId: string,
   updates: Partial<Book>,
 ) => {
-  const book = await BookModel.findOne({ id, authorId: userId });
+  const book = await BookModel.findOne({
+    _id: new mongoose.Types.ObjectId(id),
+    authorId,
+  });
   if (!book) throw new AppError("UnAuthorized", 401);
   if (book.status !== "draft")
     throw new AppError("Book must be in draft to edit", 400);

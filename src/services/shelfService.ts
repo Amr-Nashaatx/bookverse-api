@@ -1,12 +1,14 @@
+import mongoose from "mongoose";
 import { ShelfModel } from "../models/shelfModel.js";
 import { AppError } from "../utils/errors/AppError.js";
+import { populateAuthorsOnShelfBooks } from "../utils/pipelines.js";
 
-export const createShelf = async (userId: any, data: any): Promise<any> => {
+export const createShelf = async (userId: any, data: any) => {
   const shelf = await ShelfModel.create({ ...data, user: userId });
   return shelf;
 };
 
-export const getShelves = async (userId: any): Promise<any> => {
+export const getShelves = async (userId: any) => {
   const shelves = await ShelfModel.aggregate([
     {
       $match: { user: userId },
@@ -20,20 +22,18 @@ export const getShelves = async (userId: any): Promise<any> => {
   return shelves;
 };
 
-export const getShelfById = async (userId: any, shelfId: any): Promise<any> => {
-  const shelf = await ShelfModel.findOne({
-    _id: shelfId,
-    user: userId,
-  }).populate("books");
+export const getShelfById = async (
+  userId: mongoose.Types.ObjectId,
+  shelfId: mongoose.Types.ObjectId,
+) => {
+  const pipeline = populateAuthorsOnShelfBooks(shelfId, userId);
+  const shelf = (await ShelfModel.aggregate(pipeline))[0];
+
   if (!shelf) throw new AppError("Shelf not found", 404);
   return shelf;
 };
 
-export const updateShelf = async (
-  userId: any,
-  shelfId: any,
-  updates: any,
-): Promise<any> => {
+export const updateShelf = async (userId: any, shelfId: any, updates: any) => {
   const shelf = await ShelfModel.findOneAndUpdate(
     { _id: shelfId, user: userId },
     updates,
@@ -43,7 +43,7 @@ export const updateShelf = async (
   return shelf;
 };
 
-export const deleteShelf = async (userId: any, shelfId: any): Promise<any> => {
+export const deleteShelf = async (userId: any, shelfId: any) => {
   const shelf = await ShelfModel.findOneAndDelete({
     _id: shelfId,
     user: userId,
@@ -56,7 +56,7 @@ export const addBookToShelf = async (
   userId: any,
   shelfId: any,
   bookId: any,
-): Promise<any> => {
+) => {
   const shelf = await ShelfModel.findOne({ _id: shelfId, user: userId });
   if (!shelf) throw new AppError("Shelf not found", 404);
 
@@ -73,7 +73,7 @@ export const removeBookFromShelf = async (
   userId: any,
   shelfId: any,
   bookId: any,
-): Promise<any> => {
+) => {
   const shelf = await ShelfModel.findOne({ _id: shelfId, user: userId });
   if (!shelf) throw new AppError("Shelf not found", 404);
 
