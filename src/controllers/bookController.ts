@@ -12,6 +12,8 @@ import {
   getMyBooks,
   createBookWithCover,
 } from "../services/bookService.js";
+import * as chapterService from "../services/chapterService.js";
+import * as previewService from "../services/previewService.js";
 import { buildBookFilters } from "../utils/filters.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
@@ -125,19 +127,42 @@ export const getBookByIdController = asyncHandler(
   async (req: Request, res: Response) => {
     const bookId = req.params.id;
     const book = await getBookById(bookId);
-    if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
+    // if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
     const response = new APIResponse("success", "Book fetched successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
   },
 );
 
+export const generateBookPreviewController = asyncHandler(
+  async (req: Request, res: Response) => {
+    try {
+      const bookId = req.params.id;
+      const user = req.user!;
+      const book = await getBookById(bookId);
+      const chapters = await chapterService.findChaptersOfBook(bookId, user);
+      const pdf = await previewService.generateBookPreview(book, chapters);
+
+      res.setHeader("Content-Type", "application/pdf");
+      // inline means open in browser tab rather than force download
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${book.title}.pdf"`,
+      );
+      res.send(pdf);
+    } catch (error) {
+      throw new AppError("Failed to generate preview", 500, error);
+    }
+  },
+);
+
 export const updateBookController = asyncHandler(
   async (req: Request, res: Response) => {
     const bookId = req.params.id;
-    const userId = req.user!._id;
+    const authorId = req.user!.authorId;
     const bookUpdate = req.body as Book;
-    const book = await updateBook(bookId, userId.toString(), bookUpdate);
+
+    const book = await updateBook(bookId, authorId.toString(), bookUpdate);
     const response = new APIResponse("success", "Book Updated successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);

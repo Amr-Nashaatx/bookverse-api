@@ -55,6 +55,10 @@ export const isPenNameUnique = async (penName: string) => {
   return !existing;
 };
 
+export const findByAuthorId = async (authorId: string) => {
+  const author = await AuthorModel.findById(authorId);
+  return author;
+};
 export const updateAuthorProfile = async (
   userId: mongoose.Types.ObjectId,
   updates: Partial<AuthorCreate>,

@@ -67,9 +67,7 @@ export const listChapters = async (
     query.status = "published";
   }
 
-  const chapters = await ChapterModel.find(query)
-    .select("_id title wordCount status")
-    .lean();
+  const chapters = await ChapterModel.find(query).lean();
 
   const orderMap = new Map(
     book.chapters.map((chapterId, index) => [chapterId.toString(), index]),
@@ -152,6 +150,17 @@ export const deleteChapter = async (
   await BookModel.findByIdAndUpdate(book._id, {
     $pull: { chapters: chapter._id },
   });
+};
+
+export const findChaptersOfBook = async (bookId: string, user: IUser) => {
+  const book = await getBookOrThrow(bookId);
+  if (!isOwnerOrAdmin(user, book.authorId))
+    throw new AppError("UnAuthorized", 401);
+
+  const chapters = await ChapterModel.find({
+    _id: { $in: book.chapters },
+  }).lean();
+  return chapters;
 };
 
 export const reorderChapters = async (

@@ -9,6 +9,7 @@ import {
   uploadBookCoverController,
   getMyBooksController,
   updateBookStatusController,
+  generateBookPreviewController,
 } from "../controllers/bookController.js";
 import {
   validateCreateBook,
@@ -47,6 +48,7 @@ router.put(
   updateBookStatusController,
 );
 
+router.get("/:id/preview", auth, generateBookPreviewController);
 router.post(
   "/:id/cover",
   auth,
