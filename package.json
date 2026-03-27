@@ -12,7 +12,10 @@
     "coverage": "cross-env NODE_ENV=test npx vitest --coverage",
     "type-check": "tsc --noEmit",
     "start": "tsx server.ts",
-    "start:ts": "tsx server.ts"
+    "start:ts": "tsx server.ts",
+    "db:reset": "tsx seeders/resetDB.ts",
+    "db:seed": "tsx seeders/seed.ts",
+    "db:seed:fresh": "npm run db:reset && npm run db:seed"
   },
   "keywords": [],
   "author": "",

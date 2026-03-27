@@ -212,36 +212,15 @@ export const updateBookStatus = async (
 };
 
 export const deleteBook = async (id: string) => {
-  const useTransactions = process.env.NODE_ENV !== "test";
-  let session: any = null;
-
-  if (useTransactions) {
-    session = await mongoose.startSession();
-    session.startTransaction();
-  }
-
-  let deleted = null;
+  let deleted: Book | null = null;
 
   try {
     deleted = await BookModel.findByIdAndDelete(id);
     if (!deleted) throw new AppError("Book not found", 404);
-
-    await ReviewModel.deleteOne(
-      { book: deleted._id },
-      useTransactions ? { session } : {},
-    );
-
-    if (useTransactions) {
-      await session.commitTransaction();
-      session.endSession();
-    }
   } catch (err) {
-    if (useTransactions) {
-      await session.abortTransaction();
-      session.endSession();
-    }
     throw err;
   }
+  await ReviewModel.deleteMany({ book: deleted._id });
 
   return deleted;
 };

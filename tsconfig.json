@@ -1,21 +1,31 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "module": "ES2020",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "strict": true,
-    "forceConsistentCasingInFileNames": true,
-    "outDir": "dist",
-    "rootDir": ".",
-    "resolveJsonModule": true,
-    "allowJs": true,
-    "checkJs": false,
-    "isolatedModules": false,
-    "noEmit": true,
-    "types": ["node"]
-  },
-  "include": ["src/**/*", "server.ts", "tests/**/*"],
-  "exclude": ["node_modules", "dist"]
+    "compilerOptions":  {
+                            "target":  "ES2020",
+                            "module":  "ES2020",
+                            "moduleResolution":  "node",
+                            "esModuleInterop":  true,
+                            "skipLibCheck":  true,
+                            "strict":  true,
+                            "forceConsistentCasingInFileNames":  true,
+                            "outDir":  "dist",
+                            "rootDir":  ".",
+                            "resolveJsonModule":  true,
+                            "allowJs":  true,
+                            "checkJs":  false,
+                            "isolatedModules":  false,
+                            "noEmit":  true,
+                            "types":  [
+                                          "node"
+                                      ]
+                        },
+    "include":  [
+                    "src/**/*",
+                    "server.ts",
+                    "tests/**/*",
+                    "seeders/**/*.ts"
+                ],
+    "exclude":  [
+                    "node_modules",
+                    "dist"
+                ]
 }

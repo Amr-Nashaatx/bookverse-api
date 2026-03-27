@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document, mongo } from "mongoose";
 
 export interface Book {
+  _id: mongoose.Types.ObjectId;
   title: string;
   authorId: Schema.Types.ObjectId | mongoose.Types.ObjectId;
   chapters: Schema.Types.ObjectId[];
@@ -16,7 +17,7 @@ export interface Book {
 }
 
 interface BookDoc extends Book {}
-interface BookDoc extends Document {}
+interface BookDoc extends Document<mongoose.Types.ObjectId> {}
 
 const bookSchema = new Schema<BookDoc>(
   {

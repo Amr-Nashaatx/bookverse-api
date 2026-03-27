@@ -44,7 +44,7 @@ router.put(
   "/:id/status",
   auth,
   isAuthorOrAdmin,
-  validateUpdateBookStatus,
+  validateUpdateBookStatus, 
   updateBookStatusController,
 );
 
