@@ -58,6 +58,7 @@ const bookSchema = new Schema<BookDoc>(
       type: Number,
       min: 0,
       max: 5,
+      default: 0,
     },
     description: {
       type: String,

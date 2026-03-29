@@ -20,6 +20,9 @@ import { Request, Response, NextFunction } from "express";
 import { Book } from "../models/bookModel.js";
 import mongoose from "mongoose";
 
+const getSingleValue = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
 export const createBookController = asyncHandler(
   async (req: Request, res: Response) => {
     const authorId = req.user!.authorId;
@@ -88,7 +91,8 @@ export const uploadBookCoverController = asyncHandler(
     if (!req.file) {
       throw new AppError("No image uploaded", 400);
     }
-    const bookId = req.params.id;
+    const bookId = getSingleValue(req.params.id);
+    if (!bookId) throw new AppError("Book id is required", 400);
     const buffer = req.file.buffer;
     const updatedBook = await uploadBookCover(bookId, buffer);
 
@@ -112,9 +116,22 @@ export const getGenresController = asyncHandler(
 
 export const getBooksController = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { after, before, limit, sort = "-_id" } = req.query;
+    const after = getSingleValue(req.query.after as string | string[] | undefined);
+    const before = getSingleValue(
+      req.query.before as string | string[] | undefined,
+    );
+    const limitValue = getSingleValue(
+      req.query.limit as string | string[] | undefined,
+    );
+    const sort = getSingleValue(req.query.sort as string | string[] | undefined);
     const filters = buildBookFilters(req.query);
-    const paginationParameters = { after, before, limit, sort, filters };
+    const paginationParameters = {
+      after,
+      before,
+      limit: limitValue ? Number(limitValue) : undefined,
+      sort: sort ?? "-_id",
+      filters,
+    };
     const { books, pageInfo } = await getBooks(paginationParameters);
     const response = new APIResponse("success", "Books fetched successfully");
     response.addResponseData("books", books);
@@ -125,7 +142,8 @@ export const getBooksController = asyncHandler(
 
 export const getBookByIdController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = req.params.id;
+    const bookId = getSingleValue(req.params.id);
+    if (!bookId) throw new AppError("Book id is required", 400);
     const book = await getBookById(bookId);
     // if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
     const response = new APIResponse("success", "Book fetched successfully");
@@ -137,7 +155,8 @@ export const getBookByIdController = asyncHandler(
 export const generateBookPreviewController = asyncHandler(
   async (req: Request, res: Response) => {
     try {
-      const bookId = req.params.id;
+      const bookId = getSingleValue(req.params.id);
+      if (!bookId) throw new AppError("Book id is required", 400);
       const user = req.user!;
       const book = await getBookById(bookId);
       const chapters = await chapterService.findChaptersOfBook(bookId, user);
@@ -158,7 +177,8 @@ export const generateBookPreviewController = asyncHandler(
 
 export const updateBookController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = req.params.id;
+    const bookId = getSingleValue(req.params.id);
+    if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
     const bookUpdate = req.body as Book;
 
@@ -171,7 +191,8 @@ export const updateBookController = asyncHandler(
 
 export const updateBookStatusController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = req.params.id;
+    const bookId = getSingleValue(req.params.id);
+    if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
     const { status } = req.body;
     const book = await updateBookStatus(bookId, authorId.toString(), status);
@@ -186,7 +207,9 @@ export const updateBookStatusController = asyncHandler(
 
 export const deleteBookController = asyncHandler(
   async (req: Request, res: Response) => {
-    await deleteBook(req.params.id);
+    const bookId = getSingleValue(req.params.id);
+    if (!bookId) throw new AppError("Book id is required", 400);
+    await deleteBook(bookId);
     res
       .status(200)
       .json(new APIResponse("success", "Book deleted successfully"));

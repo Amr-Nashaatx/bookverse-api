@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 import { ReviewModel } from "../models/reviewModel.js";
-import { updateBook } from "../services/bookService.js";
+import { updateBookAverageRating } from "../services/bookService.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { fetchPaginatedData } from "../utils/pagination.js";
 
@@ -75,5 +75,5 @@ export const calculateAvgRatingOfBook = async (bookId: any): Promise<void> => {
   ]);
 
   const avgRating = aggregationResult[0]?.avgRating || 0;
-  await updateBook(bookId, { averageRating: avgRating });
+  await updateBookAverageRating(bookId, avgRating);
 };

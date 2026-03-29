@@ -1,7 +1,6 @@
 import mongoose from "mongoose";
 
 type CursorValue = string | number | Date | mongoose.Types.ObjectId | null;
-
 type CursorPaginationFilters = Record<string, unknown>;
 
 export type CursorPaginationParams<
@@ -15,10 +14,7 @@ export type CursorPaginationParams<
 };
 
 export type FetchPaginatedQueryOptions = {
-  findCriteria?: {
-    fieldName: string;
-    value: unknown;
-  };
+  findCriteria?: { fieldName: string; value: unknown };
   populate?: [path: string, select?: string] | string[];
   aggregate?: Array<{
     from: string;
@@ -39,13 +35,59 @@ export type PaginatedResult<
   TCollectionName extends string,
   TDocument,
   TCursor = CursorValue,
-> = {
-  [K in TCollectionName]: TDocument[];
-} & {
+> = { [K in TCollectionName]: TDocument[] } & {
   pageInfo: PaginatedPageInfo<TCursor>;
 };
 
-export const fetchPaginatedData = async <
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/**
+ * Parses the sort string (e.g. "-createdAt" or "name") into a field name and
+ * a numeric direction: -1 for descending, 1 for ascending.
+ */
+function parseSortParam(sort: string): { field: string; direction: 1 | -1 } {
+  const isDescending = sort.startsWith("-");
+  return {
+    field: isDescending ? sort.slice(1) : sort,
+    direction: isDescending ? -1 : 1,
+  };
+}
+
+/**
+ * Builds the cursor filter for the sort field.
+ *
+ * The goal is to fetch documents that come AFTER or BEFORE the cursor value
+ * in the sorted sequence. The operator depends on both the sort direction and
+ * which cursor we're using:
+ *
+ *   Forward  (after cursor):
+ *     - ASC  sort → next items have a GREATER value  → $gt
+ *     - DESC sort → next items have a SMALLER value  → $lt
+ *
+ *   Backward (before cursor):
+ *     - ASC  sort → prev items have a SMALLER value  → $lt
+ *     - DESC sort → prev items have a GREATER value  → $gt
+ */
+function buildCursorFilter(
+  field: string,
+  direction: 1 | -1,
+  cursor: CursorValue,
+  isBackward: boolean,
+): Record<string, unknown> {
+  // Forward uses the natural sort operator; backward flips it.
+  const forwardOperator = direction === 1 ? "$gt" : "$lt";
+  const operator = isBackward
+    ? forwardOperator === "$gt"
+      ? "$lt"
+      : "$gt"
+    : forwardOperator;
+
+  return { [field]: { [operator]: cursor } };
+}
+
+// ─── Main function ────────────────────────────────────────────────────────────
+
+export async function fetchPaginatedData<
   TRawDoc,
   TCollectionName extends string,
   TFilters extends CursorPaginationFilters = CursorPaginationFilters,
@@ -59,76 +101,93 @@ export const fetchPaginatedData = async <
     sort = "-_id",
   }: CursorPaginationParams<TFilters>,
   queryOptions: FetchPaginatedQueryOptions = {},
-): Promise<
-  PaginatedResult<TCollectionName, mongoose.HydratedDocument<TRawDoc>>
-> => {
-  const mutableFilters = { ...filters } as Record<string, unknown>;
+) {
+  const normalizedLimit = Math.max(1, Number(limit) || 10);
 
-  const [field, direction] = sort.startsWith("-")
-    ? [sort.substring(1), -1 as const]
-    : [sort, 1 as const];
+  // ── 1. Parse sort string ──────────────────────────────────────────────────
+  // Determine which field to sort on and whether it's ascending or descending.
+  const { field, direction } = parseSortParam(sort);
 
-  const isAfterExists = !!after;
-  const isBeforeExists = !!before;
-  const isNoCursorSet = !after && !before;
+  // ── 2. Determine pagination direction ────────────────────────────────────
+  // We are paginating backward only when `before` is provided without `after`.
+  // Any other combination (only `after`, or neither) is treated as forward.
+  const isBackward = !!before && !after;
 
-  const isBackward = isBeforeExists && !isAfterExists;
-  const isForward = isAfterExists || isNoCursorSet;
+  // ── 3. Build query filters ────────────────────────────────────────────────
+  // Start with the caller-supplied filters, then layer on cursor and
+  // findCriteria constraints.
+  const queryFilters: Record<string, unknown> = { ...filters };
 
-  if (isForward && isAfterExists) {
-    mutableFilters[field] = direction === 1 ? { $gt: after } : { $lt: after };
+  const activeCursor = isBackward ? before : after;
+  const hasCursor = activeCursor !== null && activeCursor !== undefined;
+
+  if (hasCursor) {
+    Object.assign(
+      queryFilters,
+      buildCursorFilter(field, direction, activeCursor, isBackward),
+    );
   }
-
-  if (isBackward) {
-    mutableFilters[field] = direction === 1 ? { $lt: before } : { $gt: before };
-  }
-
-  const dbSort = (isBackward ? -direction : direction) as mongoose.SortOrder;
 
   if (queryOptions.findCriteria) {
-    mutableFilters[queryOptions.findCriteria.fieldName] =
+    queryFilters[queryOptions.findCriteria.fieldName] =
       queryOptions.findCriteria.value;
   }
 
-  let query = Model.find(mutableFilters);
+  // ── 4. Determine DB sort order ────────────────────────────────────────────
+  // When paginating backward we reverse the sort so we naturally get the
+  // items closest to the cursor. and then flip the results back
+  const dbSortDirection = (
+    isBackward ? -direction : direction
+  ) as mongoose.SortOrder;
+
+  // ── 5. Execute query (fetch limit + 1) ───────────────────────────────────
+  // Fetching one extra document lets us know whether another page exists
+  // without a separate COUNT query.
+  let query = Model.find(queryFilters)
+    .sort({ [field]: dbSortDirection })
+    .limit(normalizedLimit + 1);
 
   if (queryOptions.populate) {
     const [path, select] = queryOptions.populate;
     query = query.populate(path, select);
   }
 
-  let queryResult = await query
-    .sort({ [field]: dbSort })
-    .limit(Number(limit) + 1);
+  let results = await query;
 
-  const hasMore = queryResult.length > limit;
-  if (hasMore) queryResult.pop();
+  // ── 6. Detect overflow & restore order ───────────────────────────────────
+  const hasExtraItem = results.length > normalizedLimit;
 
-  queryResult = isBackward ? queryResult.reverse() : queryResult;
+  // Drop the extra sentinel document — it was only used to detect overflow.
+  if (hasExtraItem) results = results.slice(0, normalizedLimit);
 
-  let hasNextPage = false;
-  let hasPrevPage = false;
+  // Backward queries were fetched in reverse order; put them back in the
+  // correct display order before returning them to the caller.
+  if (isBackward) results = results.reverse();
 
-  if (isBackward) {
-    hasPrevPage = hasMore;
-    hasNextPage = true;
-  } else {
-    hasNextPage = hasMore;
-    hasPrevPage = !!after;
-  }
+  // ── 7. Derive page flags ──────────────────────────────────────────────────
+  // `hasNextPage` and `hasPrevPage` are relative to the returned slice,
+  // not the raw DB direction.
+  //
+  //   Forward:  overflow means there IS a next page;
+  //             an `after` cursor means we came from a previous page.
+  //
+  //   Backward: overflow means there IS a previous page;
+  //             we always have a next page (we navigated backward to get here).
+  const hasNextPage = isBackward ? !!after || true : hasExtraItem;
+  const hasPrevPage = isBackward ? hasExtraItem : !!after;
 
-  const firstItem = queryResult[0];
-  const lastItem = queryResult[queryResult.length - 1];
-  const getCursorValue = (doc?: mongoose.HydratedDocument<TRawDoc>) =>
-    doc ? (doc.get(field) as CursorValue) : null;
+  // ── 8. Extract cursor values ──────────────────────────────────────────────
+  // Cursors point to the edges of the returned slice so the client can
+  // request the next or previous page.
+  const getCursorValue = (
+    doc?: mongoose.HydratedDocument<TRawDoc>,
+  ): CursorValue => (doc ? (doc.get(field) as CursorValue) : null);
+
+  const prevCursor = getCursorValue(results[0]);
+  const nextCursor = getCursorValue(results[results.length - 1]);
 
   return {
-    [Model.collection.name]: queryResult,
-    pageInfo: {
-      hasNextPage,
-      hasPrevPage,
-      nextCursor: getCursorValue(lastItem),
-      prevCursor: getCursorValue(firstItem),
-    },
+    [Model.collection.name]: results,
+    pageInfo: { hasNextPage, hasPrevPage, nextCursor, prevCursor },
   } as PaginatedResult<TCollectionName, mongoose.HydratedDocument<TRawDoc>>;
-};
+}

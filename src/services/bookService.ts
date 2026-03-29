@@ -1,17 +1,34 @@
 import mongoose from "mongoose";
+import { createClient, type RedisClientType } from "redis";
 import { BookModel, Book } from "../models/bookModel.js";
 import { ReviewModel } from "../models/reviewModel.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { fetchPaginatedData } from "../utils/pagination.js";
-import Redis from "ioredis";
 import { CloudinaryProvider } from "./storage/CloundinaryProvider.js";
 import { AuthorModel } from "../models/authorModel.js";
 
-const redis = new Redis({
-  host: "redis",
-  port: 6379,
+const redis: RedisClientType = createClient({
+  socket: {
+    host: "redis",
+    port: 6379,
+  },
 });
 redis.on("error", () => {});
+
+let redisConnectionPromise: Promise<RedisClientType> | null = null;
+
+const getRedisClient = async () => {
+  if (redis.isOpen) return redis;
+
+  if (!redisConnectionPromise) {
+    redisConnectionPromise = redis.connect().then(() => redis);
+    redisConnectionPromise.catch(() => {
+      redisConnectionPromise = null;
+    });
+  }
+
+  return redisConnectionPromise;
+};
 
 export const createBook = async (data: Book) => {
   const book = await BookModel.create(data);
@@ -98,7 +115,8 @@ export const getGenres = async () => {
   const listKey = `books:genres`;
   const ttl = 3600; // 1 hour
   try {
-    const cachedGenres = await redis.lrange(listKey, 0, -1);
+    const redisClient = await getRedisClient();
+    const cachedGenres = await redisClient.lRange(listKey, 0, -1);
     if (cachedGenres.length > 0) {
       return cachedGenres;
     }
@@ -120,10 +138,11 @@ export const getGenres = async () => {
   const genres = result.map((g: any) => g.genre);
   try {
     if (genres.length > 0) {
-      await redis
+      const redisClient = await getRedisClient();
+      await redisClient
         .multi()
         .del(listKey)
-        .rpush(listKey, ...genres)
+        .rPush(listKey, genres)
         .expire(listKey, ttl)
         .exec();
     }
@@ -161,9 +180,23 @@ export const updateBook = async (
   if (!book) throw new AppError("UnAuthorized", 401);
   if (book.status !== "draft")
     throw new AppError("Book must be in draft to edit", 400);
-  const updated = await BookModel.updateOne({ id }, updates);
+  const updated = await BookModel.updateOne({ _id: id }, updates);
   if (!updated) throw new AppError("Book not found", 404);
   return updated;
+};
+
+export const updateBookAverageRating = async (
+  id: mongoose.Types.ObjectId | string,
+  averageRating: number,
+) => {
+  const updatedBook = await BookModel.findByIdAndUpdate(
+    id,
+    { averageRating },
+    { new: true },
+  );
+
+  if (!updatedBook) throw new AppError("Book not found", 404);
+  return updatedBook;
 };
 
 export const updateBookStatus = async (
