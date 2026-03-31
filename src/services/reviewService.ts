@@ -54,7 +54,6 @@ export const updateReview = async (
     new: true,
   });
   if (!review) throw new AppError("Review not found", 404);
-  // Potentail performance issue here
   if (reviewUpdates.rating) await calculateAvgRatingOfBook(review.book); // update average rating of a book only if review rating is updated.
 
   return review;

@@ -45,3 +45,7 @@ export const clearTokenCookieOptions: CookieOptions = {
   sameSite: "none",
   secure: process.env.NODE_ENV === "production",
 };
+
+export const getSingleValueFromParams = (
+  value: string | string[] | undefined,
+) => (Array.isArray(value) ? value[0] : value);

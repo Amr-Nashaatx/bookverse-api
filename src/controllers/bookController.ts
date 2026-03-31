@@ -19,9 +19,7 @@ import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
 import { Book } from "../models/bookModel.js";
 import mongoose from "mongoose";
-
-const getSingleValue = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value;
+import { getSingleValueFromParams } from "../utils/utils.js";
 
 export const createBookController = asyncHandler(
   async (req: Request, res: Response) => {
@@ -91,7 +89,7 @@ export const uploadBookCoverController = asyncHandler(
     if (!req.file) {
       throw new AppError("No image uploaded", 400);
     }
-    const bookId = getSingleValue(req.params.id);
+    const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const buffer = req.file.buffer;
     const updatedBook = await uploadBookCover(bookId, buffer);
@@ -116,14 +114,18 @@ export const getGenresController = asyncHandler(
 
 export const getBooksController = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const after = getSingleValue(req.query.after as string | string[] | undefined);
-    const before = getSingleValue(
+    const after = getSingleValueFromParams(
+      req.query.after as string | string[] | undefined,
+    );
+    const before = getSingleValueFromParams(
       req.query.before as string | string[] | undefined,
     );
-    const limitValue = getSingleValue(
+    const limitValue = getSingleValueFromParams(
       req.query.limit as string | string[] | undefined,
     );
-    const sort = getSingleValue(req.query.sort as string | string[] | undefined);
+    const sort = getSingleValueFromParams(
+      req.query.sort as string | string[] | undefined,
+    );
     const filters = buildBookFilters(req.query);
     const paginationParameters = {
       after,
@@ -142,7 +144,7 @@ export const getBooksController = asyncHandler(
 
 export const getBookByIdController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = getSingleValue(req.params.id);
+    const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const book = await getBookById(bookId);
     // if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
@@ -155,7 +157,7 @@ export const getBookByIdController = asyncHandler(
 export const generateBookPreviewController = asyncHandler(
   async (req: Request, res: Response) => {
     try {
-      const bookId = getSingleValue(req.params.id);
+      const bookId = getSingleValueFromParams(req.params.id);
       if (!bookId) throw new AppError("Book id is required", 400);
       const user = req.user!;
       const book = await getBookById(bookId);
@@ -177,7 +179,7 @@ export const generateBookPreviewController = asyncHandler(
 
 export const updateBookController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = getSingleValue(req.params.id);
+    const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
     const bookUpdate = req.body as Book;
@@ -191,7 +193,7 @@ export const updateBookController = asyncHandler(
 
 export const updateBookStatusController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = getSingleValue(req.params.id);
+    const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
     const { status } = req.body;
@@ -207,7 +209,7 @@ export const updateBookStatusController = asyncHandler(
 
 export const deleteBookController = asyncHandler(
   async (req: Request, res: Response) => {
-    const bookId = getSingleValue(req.params.id);
+    const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     await deleteBook(bookId);
     res

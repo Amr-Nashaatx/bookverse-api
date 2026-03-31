@@ -1,9 +1,9 @@
-import { StorageProvider } from "./storageProvider.js";
+import { StorageProvider } from "./StorageProvider";
 import cloudinary from "../../config/cloudinary.js";
 import { Readable } from "stream";
 
 export class CloudinaryProvider extends StorageProvider {
-  uploadImage(buffer, folder) {
+  uploadImage(buffer: Buffer, folder: string): Promise<any> {
     if (!buffer) {
       throw new Error("File buffer is required");
     }
@@ -17,14 +17,14 @@ export class CloudinaryProvider extends StorageProvider {
         (error, result) => {
           if (error) return reject(error);
           resolve(result);
-        }
+        },
       );
 
       Readable.from(buffer).pipe(uploadStream);
     });
   }
 
-  async deleteImage(publicId) {
+  async deleteImage(publicId: string) {
     if (!publicId) return;
     await cloudinary.uploader.destroy(publicId);
   }
