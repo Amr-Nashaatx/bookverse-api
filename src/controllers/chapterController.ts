@@ -9,10 +9,14 @@ import {
   reorderChapters,
   updateChapter,
 } from "../services/chapterService.js";
+import { getSingleValueFromParams } from "../utils/utils.js";
+import { AppError } from "../utils/errors/AppError.js";
 
 export const createChapterController = asyncHandler(
   async (req: Request, res: Response) => {
-    const chapter = await createChapter(req.params.bookId, req.user, req.body);
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("id not provided", 400);
+    const chapter = await createChapter(bookId, req.user, req.body);
     const response = new APIResponse("success", "Chapter created successfully");
     response.addResponseData("chapter", {
       _id: chapter._id,
@@ -28,8 +32,11 @@ export const createChapterController = asyncHandler(
 
 export const listChaptersController = asyncHandler(
   async (req: Request, res: Response) => {
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("id not provided", 400);
+
     const chapters = await listChapters(
-      req.params.bookId,
+      bookId,
       req.user,
       req.query.status as "draft" | "published" | undefined,
     );
@@ -44,11 +51,13 @@ export const listChaptersController = asyncHandler(
 
 export const getChapterController = asyncHandler(
   async (req: Request, res: Response) => {
-    const chapter = await getChapterById(
-      req.params.bookId,
-      req.params.chapterId,
-      req.user,
-    );
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("Book id not provided", 400);
+
+    const chapterId = getSingleValueFromParams(req.params.chapterId);
+    if (!chapterId) throw new AppError("Chapter id not provided", 400);
+
+    const chapter = await getChapterById(bookId, chapterId, req.user);
     const response = new APIResponse("success", "Chapter fetched successfully");
     response.addResponseData("chapter", chapter);
     res.status(200).json(response);
@@ -57,12 +66,13 @@ export const getChapterController = asyncHandler(
 
 export const updateChapterController = asyncHandler(
   async (req: Request, res: Response) => {
-    const chapter = await updateChapter(
-      req.params.bookId,
-      req.params.chapterId,
-      req.user,
-      req.body,
-    );
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("Book id not provided", 400);
+
+    const chapterId = getSingleValueFromParams(req.params.chapterId);
+    if (!chapterId) throw new AppError("Chapter id not provided", 400);
+
+    const chapter = await updateChapter(bookId, chapterId, req.user, req.body);
     const response = new APIResponse("success", "Chapter updated successfully");
     response.addResponseData("chapter", chapter);
     res.status(200).json(response);
@@ -71,7 +81,13 @@ export const updateChapterController = asyncHandler(
 
 export const deleteChapterController = asyncHandler(
   async (req: Request, res: Response) => {
-    await deleteChapter(req.params.bookId, req.params.chapterId, req.user);
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("Book id not provided", 400);
+
+    const chapterId = getSingleValueFromParams(req.params.chapterId);
+    if (!chapterId) throw new AppError("Chapter id not provided", 400);
+
+    await deleteChapter(bookId, chapterId, req.user);
     const response = new APIResponse("success", "Chapter deleted successfully");
     response.addResponseData("success", true);
     res.status(200).json(response);
@@ -80,11 +96,10 @@ export const deleteChapterController = asyncHandler(
 
 export const reorderChaptersController = asyncHandler(
   async (req: Request, res: Response) => {
-    const chapters = await reorderChapters(
-      req.params.bookId,
-      req.user,
-      req.body.chapters,
-    );
+    const bookId = getSingleValueFromParams(req.params.bookId);
+    if (!bookId) throw new AppError("Book id not provided", 400);
+
+    const chapters = await reorderChapters(bookId, req.user, req.body.chapters);
     const response = new APIResponse(
       "success",
       "Chapters reordered successfully",

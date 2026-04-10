@@ -50,7 +50,7 @@ export const createBookController = asyncHandler(
 export const getMyBooksController = asyncHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!._id;
-    const allowedStatuses = ["published", "draft"];
+    const allowedStatuses = ["published", "draft", "preview", "archived"];
     const query = req.query;
 
     // Pagination parameters
@@ -61,13 +61,18 @@ export const getMyBooksController = asyncHandler(
     let sort = {} as { [key in string]: 1 | -1 };
     if (query) {
       const status = query.status as string;
-      const sortBy = query.sortBy as string;
+      const sortBy = (query.sortBy || query.sort) as string;
       if (status && allowedStatuses.includes(status)) filter["status"] = status;
       switch (sortBy) {
         case "title":
           sort["title"] = 1;
+          break;
         case "status":
           sort["status"] = 1;
+          break;
+        case "lastModified":
+          sort["updatedAt"] = -1;
+          break;
       }
     }
     const { books, pageInfo } = await getMyBooks(userId, filter, sort, {
@@ -147,7 +152,7 @@ export const getBookByIdController = asyncHandler(
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const book = await getBookById(bookId);
-    // if (!(book.status === "published")) throw new AppError("UnAuthorized", 401);
+    if (book.status !== "published") throw new AppError("UnAuthorized", 401);
     const response = new APIResponse("success", "Book fetched successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
@@ -211,7 +216,7 @@ export const deleteBookController = asyncHandler(
   async (req: Request, res: Response) => {
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
-    await deleteBook(bookId);
+    await deleteBook(bookId, req.user!);
     res
       .status(200)
       .json(new APIResponse("success", "Book deleted successfully"));

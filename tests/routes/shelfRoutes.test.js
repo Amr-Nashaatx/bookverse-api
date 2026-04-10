@@ -5,10 +5,12 @@ import { UserModel } from "../../src/models/userModel.js";
 import { BookModel } from "../../src/models/bookModel.js";
 import { ShelfModel } from "../../src/models/shelfModel.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 
 let authCookie;
 let testBook;
 let testUser;
+let testAuthorId;
 
 beforeAll(async () => {
   testUser = await UserModel.create({
@@ -16,6 +18,7 @@ beforeAll(async () => {
     email: "shelftester@test.com",
     password: "pass1234",
   });
+  testAuthorId = new mongoose.Types.ObjectId();
 
   const token = jwt.sign(
     { userId: testUser._id, email: testUser.email, name: testUser.name },
@@ -33,7 +36,7 @@ describe("Shelf Routes", () => {
 
     testBook = await BookModel.create({
       title: "Shelf Test Book",
-      author: "Test Author",
+      authorId: testAuthorId,
       genre: "Testing",
       description: "A book for testing shelves",
       createdBy: testUser._id,

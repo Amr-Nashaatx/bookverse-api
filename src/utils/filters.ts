@@ -24,5 +24,8 @@ export const buildBookFilters = (query: any): any => {
   if (query.q) {
     filter.$text = { $search: query.q };
   }
+
+  // Fetch only published books
+  filter["status"] = "published";
   return filter;
 };

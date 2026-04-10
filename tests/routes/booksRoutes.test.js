@@ -96,7 +96,7 @@ describe("Book Routes ", () => {
       await request(app)
         .post("/api/books")
         .set("Cookie", authCookie)
-        .send(testBook);
+        .send({ ...testBook, status: "published" });
 
       const res = await request(app).get("/api/books");
 
@@ -117,9 +117,9 @@ describe("Book Routes ", () => {
     });
 
     test("paginates forward using after cursor", async () => {
-      const b1 = { ...testBook, title: "AAAAAAAAAAA" };
-      const b2 = { ...testBook, title: "BBBBBBBBBB" };
-      const b3 = { ...testBook, title: "CCCCCCCCCC" };
+      const b1 = { ...testBook, title: "AAAAAAAAAAA", status: "published" };
+      const b2 = { ...testBook, title: "BBBBBBBBBB", status: "published" };
+      const b3 = { ...testBook, title: "CCCCCCCCCC", status: "published" };
 
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
@@ -143,9 +143,9 @@ describe("Book Routes ", () => {
     });
 
     test("paginates backward using before cursor", async () => {
-      const b1 = { ...testBook, title: "AAAAAAAAAAA" };
-      const b2 = { ...testBook, title: "BBBBBBBBBB" };
-      const b3 = { ...testBook, title: "CCCCCCCCCC" };
+      const b1 = { ...testBook, title: "AAAAAAAAAAA", status: "published" };
+      const b2 = { ...testBook, title: "BBBBBBBBBB", status: "published" };
+      const b3 = { ...testBook, title: "CCCCCCCCCC", status: "published" };
 
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
@@ -166,9 +166,9 @@ describe("Book Routes ", () => {
     });
 
     test("filters by rating range", async () => {
-      const b1 = { ...testBook, averageRating: 3 };
-      const b2 = { ...testBook, averageRating: 4 };
-      const b3 = { ...testBook, averageRating: 5 };
+      const b1 = { ...testBook, averageRating: 3, status: "published" };
+      const b2 = { ...testBook, averageRating: 4, status: "published" };
+      const b3 = { ...testBook, averageRating: 5, status: "published" };
 
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);
@@ -182,9 +182,9 @@ describe("Book Routes ", () => {
     });
 
     test("filters by genre array", async () => {
-      const b1 = { ...testBook, genre: "Fantasy" };
-      const b2 = { ...testBook, genre: "Sci-Fi" };
-      const b3 = { ...testBook, genre: "Horror" };
+      const b1 = { ...testBook, genre: "Fantasy", status: "published" };
+      const b2 = { ...testBook, genre: "Sci-Fi", status: "published" };
+      const b3 = { ...testBook, genre: "Horror", status: "published" };
 
       await request(app).post("/api/books").set("Cookie", authCookie).send(b1);
       await request(app).post("/api/books").set("Cookie", authCookie).send(b2);

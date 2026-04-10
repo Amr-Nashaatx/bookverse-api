@@ -42,6 +42,40 @@ const chapterSchema = new Schema<IChapter>(
   { timestamps: true },
 );
 
+const extractText = (content: unknown): string => {
+  if (!content) return "";
+  if (typeof content === "string") {
+    try {
+      const parsed = JSON.parse(content);
+      return extractText(parsed);
+    } catch {
+      return content;
+    }
+  }
+  if (Array.isArray(content)) {
+    return content.map(extractText).join(" ");
+  }
+  if (typeof content === "object") {
+    return Object.values(content as Record<string, unknown>)
+      .map(extractText)
+      .join(" ");
+  }
+  return "";
+};
+
+const countWords = (content: unknown): number => {
+  const text = extractText(content).trim();
+  if (!text) return 0;
+  return text.split(/\s+/).length;
+};
+
+chapterSchema.pre("save", function (next) {
+  if (this.isModified("content")) {
+    this.wordCount = countWords(this.content);
+  }
+  next();
+});
+
 chapterSchema.pre(
   ["findOneAndUpdate", "updateOne", "updateMany"],
   function (this: Query<any, IChapter>, next) {
@@ -54,15 +88,17 @@ chapterSchema.pre(
     const wordCount = update.wordCount;
     const set = update.$set as Record<string, unknown> | undefined;
     const setContent = set?.content;
+    const setWordCount = set?.wordCount;
     const content = directContent ?? setContent;
 
     if (content !== undefined) {
+      const nextWordCount = wordCount ?? setWordCount ?? countWords(content);
       this.setUpdate({
         ...update,
         $set: {
           ...(set || {}),
           content,
-          wordCount: wordCount ?? -1,
+          wordCount: nextWordCount,
         },
       });
     }

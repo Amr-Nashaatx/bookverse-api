@@ -6,6 +6,7 @@ import { AppError } from "../utils/errors/AppError.js";
 import { fetchPaginatedData } from "../utils/pagination.js";
 import { CloudinaryProvider } from "./storage/CloundinaryProvider.js";
 import { AuthorModel } from "../models/authorModel.js";
+import { IUser } from "../models/userModel.js";
 
 const redis: RedisClientType = createClient({
   socket: {
@@ -151,7 +152,7 @@ export const getGenres = async () => {
 };
 
 export const getBookById = async (id: string) => {
-  const book = await BookModel.aggregate([
+  const book = (await BookModel.aggregate([
     {
       $match: { _id: new mongoose.Types.ObjectId(id) },
     },
@@ -163,7 +164,7 @@ export const getBookById = async (id: string) => {
         as: "author",
       },
     },
-  ]);
+  ])) as Book[];
   if (!book) throw new AppError("Book not found", 404);
   return book[0];
 };
@@ -244,11 +245,18 @@ export const updateBookStatus = async (
   return updated;
 };
 
-export const deleteBook = async (id: string) => {
+export const deleteBook = async (id: string, user: IUser) => {
   let deleted: Book | null = null;
 
+  if (user.role !== "admin" && !user.authorId) {
+    throw new AppError("UnAuthorized", 401);
+  }
+
+  const filter =
+    user.role === "admin" ? { _id: id } : { _id: id, authorId: user.authorId };
+
   try {
-    deleted = await BookModel.findByIdAndDelete(id);
+    deleted = await BookModel.findOneAndDelete(filter);
     if (!deleted) throw new AppError("Book not found", 404);
   } catch (err) {
     throw err;

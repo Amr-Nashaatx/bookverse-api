@@ -60,7 +60,10 @@ export const validateUpdateChapter = [
     .trim()
     .isLength({ min: 1, max: 200 })
     .withMessage("title must be between 1 and 200 characters"),
-  body("content").optional().isJSON().withMessage("content must json string"),
+  body("content")
+    .optional()
+    .isString()
+    .withMessage("content must be a string"),
   body("wordCount").optional().isInt(),
   body().custom((value) => {
     if (

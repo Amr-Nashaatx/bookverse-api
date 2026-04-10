@@ -43,7 +43,7 @@ beforeAll(async () => {
   testBook = {
     _id: testBookId,
     title: "The Hobbit",
-    author: "J.R.R. Tolkien",
+    authorId: new mongoose.Types.ObjectId(),
     genre: "Fantasy",
     description: "A story about three hobbits",
     createdBy: testUserId,
@@ -53,7 +53,7 @@ beforeAll(async () => {
   testBook1 = {
     _id: testBook1Id,
     title: "Naruto",
-    author: "Mashashi Kishumoto",
+    authorId: new mongoose.Types.ObjectId(),
     genre: "Fantasy",
     description: "A story about ninjas",
     createdBy: testUserId,
