@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { createClient, type RedisClientType } from "redis";
-import { BookModel, Book } from "../models/bookModel.js";
+import { BookModel } from "../models/bookModel.js";
+import type { Book } from "../models/bookModel.js";
 import { ReviewModel } from "../models/reviewModel.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { fetchPaginatedData } from "../utils/pagination.js";

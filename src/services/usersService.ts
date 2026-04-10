@@ -1,6 +1,6 @@
-import { IUser, UserModel } from "../models/userModel";
-import { AppError } from "../utils/errors/AppError";
-import { CloudinaryProvider } from "./storage/CloundinaryProvider";
+import { IUser, UserModel } from "../models/userModel.js";
+import { AppError } from "../utils/errors/AppError.js";
+import { CloudinaryProvider } from "./storage/CloundinaryProvider.js";
 import mongoose from "mongoose";
 
 export const updateUser = async (id: string, updates: Partial<IUser>) => {
@@ -25,4 +25,11 @@ export const uploadAvatar = async (userId: string, fileBuffer: Buffer) => {
   );
 
   return updatedUser;
+};
+
+export const findById = async (userId: string) => {
+  const user = await UserModel.findById(userId);
+  if (!user) throw new AppError("User not found", 404);
+
+  return user;
 };

@@ -1,5 +1,5 @@
 import { getBrowser } from "../config/browser.js";
-import { Book } from "../models/bookModel.js";
+import type { Book } from "../models/bookModel.js";
 import { buildBookHtml } from "../utils/bookHtml.js";
 import { AppError } from "../utils/errors/AppError.js";
 

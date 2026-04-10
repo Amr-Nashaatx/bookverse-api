@@ -6,6 +6,7 @@ export default defineConfig({
     environment: "node",
     setupFiles: ["./tests/setup.js"],
     include: ["tests/**/*.test.js"],
+    fileParallelism: false,
     coverage: {
       reporter: ["text", "json", "html"],
     },

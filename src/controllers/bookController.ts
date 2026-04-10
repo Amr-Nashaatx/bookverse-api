@@ -17,7 +17,7 @@ import * as previewService from "../services/previewService.js";
 import { buildBookFilters } from "../utils/filters.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
-import { Book } from "../models/bookModel.js";
+import type { Book } from "../models/bookModel.js";
 import mongoose from "mongoose";
 import { getSingleValueFromParams } from "../utils/utils.js";
 
