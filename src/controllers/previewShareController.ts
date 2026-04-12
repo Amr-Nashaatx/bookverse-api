@@ -10,19 +10,14 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
 
   if (!bookId) throw new AppError("Book id is invalid", 400);
 
-  let durationMs: number | undefined;
-  if (req.query.durationMs && typeof req.query.durationMs === "string") {
-    durationMs = parseInt(req.query.durationMs);
-  }
-
-  let userId: string | undefined;
-  if (req.query.sharedWith && typeof req.query.sharedWith === "string") {
-    userId = req.query.sharedWith;
-  } else throw new AppError("invalid user id", 400);
+  const { durationMs, email } = req.body as {
+    durationMs: number;
+    email: string;
+  };
 
   const previewShare = await previewShareService.createPreviewShare(
     bookId,
-    userId,
+    email,
     req.user!,
     durationMs,
   );

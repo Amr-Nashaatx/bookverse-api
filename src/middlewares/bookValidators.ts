@@ -24,11 +24,6 @@ export const validateCreateBook = [
     .withMessage("genre cannot be empty")
     .isLength({ min: 3, max: 30 })
     .withMessage("genre must be between 3 to 30characters long"),
-  body("publishedYear")
-    .notEmpty()
-    .withMessage("published year must be provided")
-    .isInt({ min: 1450 })
-    .withMessage("Published year is too low"),
 
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
@@ -72,12 +67,7 @@ export const validateUpdateBook = [
     .withMessage("genre cannot be empty")
     .isLength({ min: 3, max: 30 })
     .withMessage("genre must be between 3 to 30 characters long"),
-  body("publishedYear")
-    .notEmpty()
-    .optional()
-    .withMessage("publishedYear must be provided")
-    .isInt({ min: 1450 })
-    .withMessage("Published year is too low"),
+
   (req: Request, res: Response, next: NextFunction) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

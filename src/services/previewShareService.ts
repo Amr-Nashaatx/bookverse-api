@@ -16,7 +16,7 @@ const canReadShare = (previewShare: any, user: IUser) => {
 
 export const createPreviewShare = async (
   bookId: string,
-  userId: string,
+  userEmail: string,
   sharedBy: IUser,
   durationMs?: number,
 ) => {
@@ -38,14 +38,10 @@ export const createPreviewShare = async (
   if (book.status !== "preview") {
     throw new AppError("Book must be in preview status to share", 400);
   }
-  if (sharedBy._id.toString() === userId) {
-    throw new AppError("Cannot share a preview with yourself", 400);
-  }
 
   // check existence of the user to share the book with
-  const userExists = !!(await userService.findById(userId));
-  if (!userExists) throw new AppError("User id is not valid", 400);
-
+  const user = await userService.findByEmail(userEmail);
+  const userId = user._id.toString();
   const existingShare = await PreviewShareModel.findOne({ bookId, userId });
   if (existingShare) throw new AppError("Preview share already exists", 400);
 
@@ -61,7 +57,8 @@ export const createPreviewShare = async (
 export const getPreviewShare = async (shareId: string, user: IUser) => {
   const previewShare = await PreviewShareModel.findById(shareId).lean();
   if (!previewShare) throw new AppError("Preview share not found", 404);
-  if (!canReadShare(previewShare, user)) throw new AppError("Unauthorized", 401);
+  if (!canReadShare(previewShare, user))
+    throw new AppError("Unauthorized", 401);
   return previewShare;
 };
 
@@ -71,7 +68,8 @@ export const deletePreviewShare = async (shareId: string, user: IUser) => {
   if (!isShareOwnerOrAdmin(previewShare, user))
     throw new AppError("Unauthorized", 401);
 
-  const deletedShare = await PreviewShareModel.findByIdAndDelete(shareId).lean();
+  const deletedShare =
+    await PreviewShareModel.findByIdAndDelete(shareId).lean();
 
   return deletedShare;
 };

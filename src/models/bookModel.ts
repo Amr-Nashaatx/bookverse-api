@@ -50,9 +50,7 @@ const bookSchema = new Schema<BookDoc>(
     },
     publishedYear: {
       type: Number,
-      required: true,
-      min: 1450,
-      max: new Date().getFullYear(),
+      default: Date.now(),
     },
     averageRating: {
       type: Number,

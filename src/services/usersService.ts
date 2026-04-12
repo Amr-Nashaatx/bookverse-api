@@ -6,7 +6,7 @@ import mongoose from "mongoose";
 export const updateUser = async (id: string, updates: Partial<IUser>) => {
   const updatedUser = await UserModel.findOneAndUpdate({ _id: id }, updates, {
     new: true,
-  });
+  }).lean();
   return updatedUser;
 };
 
@@ -22,14 +22,21 @@ export const uploadAvatar = async (userId: string, fileBuffer: Buffer) => {
       avatar: result.secure_url,
     },
     { new: true },
-  );
+  ).lean();
 
   return updatedUser;
 };
 
 export const findById = async (userId: string) => {
-  const user = await UserModel.findById(userId);
+  const user = await UserModel.findById(userId).lean();
   if (!user) throw new AppError("User not found", 404);
+
+  return user;
+};
+
+export const findByEmail = async (userEmail: string) => {
+  const user = await UserModel.findOne({ email: userEmail }).lean();
+  if (!user) throw new AppError("Invalid user email", 400);
 
   return user;
 };
