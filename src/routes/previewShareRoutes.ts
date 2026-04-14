@@ -5,7 +5,7 @@ import { previewShareCreateValidator } from "../middlewares/previewShareValidato
 
 const router = express.Router();
 
-router.get("/:shareId", auth, previewShareController.findById);
+router.get("/:shareId", auth, previewShareController.previewByShareId);
 
 router.delete("/:shareId", auth, previewShareController.deleteById);
 

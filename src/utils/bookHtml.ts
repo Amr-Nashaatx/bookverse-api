@@ -1,6 +1,6 @@
 import { generateHTML } from "@tiptap/html";
 import StarterKit from "@tiptap/starter-kit";
-import { Book } from "../models/bookModel";
+import { Book } from "../models/bookModel.js";
 import * as authorService from "../services/authorService.js";
 
 function chapterToHtml(chapter: { [k in string]: any }) {

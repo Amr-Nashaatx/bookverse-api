@@ -4,6 +4,9 @@ import { APIResponse } from "../utils/response.js";
 import { getSingleValueFromParams } from "../utils/utils.js";
 import { AppError } from "../utils/errors/AppError.js";
 import * as previewShareService from "../services/previewShareService.js";
+import { getBookById } from "../services/bookService.js";
+import { generateBookPreview } from "../services/previewService.js";
+import { findChaptersOfBook } from "../services/chapterService.js";
 
 export const create = asyncHandler(async (req: Request, res: Response) => {
   const bookId = getSingleValueFromParams(req.params.bookId);
@@ -27,18 +30,35 @@ export const create = asyncHandler(async (req: Request, res: Response) => {
   res.status(201).json(response);
 });
 
-export const findById = asyncHandler(async (req: Request, res: Response) => {
-  const shareId = getSingleValueFromParams(req.params.shareId);
-  if (!shareId) throw new AppError("Invalid share id", 400);
+export const previewByShareId = asyncHandler(
+  async (req: Request, res: Response) => {
+    const shareId = getSingleValueFromParams(req.params.shareId);
+    if (!shareId) throw new AppError("Invalid share id", 400);
 
-  const previewShare = await previewShareService.getPreviewShare(
-    shareId,
-    req.user!,
-  );
-  const response = new APIResponse("success", "previewShare fetched");
-  response.addResponseData("previewShare", previewShare);
-  res.json(response);
-});
+    const userId = req.user!._id;
+    const previewShare = await previewShareService.getPreviewShare(
+      shareId,
+      req.user!,
+    );
+
+    // check the userId is the same as the sharedWith user on previewShare object
+    if (!previewShare.userId.equals(userId)) {
+      throw new AppError("user does not have access for this link", 403);
+    }
+
+    const book = await getBookById(previewShare.bookId.toString());
+    const chapters = await findChaptersOfBook(book._id.toString(), req.user!);
+    const pdf = await generateBookPreview(book, chapters);
+
+    res.setHeader("Content-Type", "application/pdf");
+    // inline means open in browser tab rather than force download
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="${book.title}.pdf"`,
+    );
+    res.send(pdf);
+  },
+);
 
 export const deleteById = asyncHandler(async (req: Request, res: Response) => {
   const shareId = getSingleValueFromParams(req.params.shareId);
