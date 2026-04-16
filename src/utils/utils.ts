@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { CookieOptions } from "express";
+import { CookieOptions, Response } from "express";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -46,6 +47,15 @@ export const clearTokenCookieOptions: CookieOptions = {
   secure: process.env.NODE_ENV === "production",
 };
 
+export const toMongoId = (str: string) => {
+  return new mongoose.Types.ObjectId(str);
+};
+export const setSSEHeaders = (res: Response) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+};
 export const getSingleValueFromParams = (
   value: string | string[] | undefined,
 ) => (Array.isArray(value) ? value[0] : value);
