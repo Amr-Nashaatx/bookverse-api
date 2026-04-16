@@ -163,6 +163,23 @@ export const findChaptersOfBook = async (bookId: string, user: IUser) => {
   return chapters;
 };
 
+export const findPreviewChaptersOfBook = async (bookId: string) => {
+  const book = await getBookOrThrow(bookId);
+  const chapters = await ChapterModel.find({
+    _id: { $in: book.chapters },
+  }).lean();
+
+  const orderMap = new Map(
+    book.chapters.map((chapterId, index) => [chapterId.toString(), index]),
+  );
+
+  return chapters.sort((a, b) => {
+    const aIndex = orderMap.get(a._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+    const bIndex = orderMap.get(b._id.toString()) ?? Number.MAX_SAFE_INTEGER;
+    return aIndex - bIndex;
+  });
+};
+
 export const reorderChapters = async (
   bookId: string,
   user: IUser | undefined,

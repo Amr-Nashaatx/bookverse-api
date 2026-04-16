@@ -6,7 +6,7 @@ import { AppError } from "../utils/errors/AppError.js";
 import * as previewShareService from "../services/previewShareService.js";
 import { getBookById } from "../services/bookService.js";
 import { generateBookPreview } from "../services/previewService.js";
-import { findChaptersOfBook } from "../services/chapterService.js";
+import { findPreviewChaptersOfBook } from "../services/chapterService.js";
 
 export const create = asyncHandler(async (req: Request, res: Response) => {
   const bookId = getSingleValueFromParams(req.params.bookId);
@@ -47,7 +47,7 @@ export const previewByShareId = asyncHandler(
     }
 
     const book = await getBookById(previewShare.bookId.toString());
-    const chapters = await findChaptersOfBook(book._id.toString(), req.user!);
+    const chapters = await findPreviewChaptersOfBook(book._id.toString());
     const pdf = await generateBookPreview(book, chapters);
 
     res.setHeader("Content-Type", "application/pdf");

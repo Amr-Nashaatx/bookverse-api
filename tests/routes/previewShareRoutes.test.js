@@ -1,6 +1,13 @@
-import { describe, expect, test } from "vitest";
-import { api } from "../setup.js";
+import { describe, expect, test, vi } from "vitest";
+import request from "supertest";
+import app from "../../src/app.js";
 import { UserModel } from "../../src/models/userModel.js";
+
+vi.mock("../../src/services/previewService.js", () => ({
+  generateBookPreview: vi.fn().mockResolvedValue(Buffer.from("%PDF-1.4")),
+}));
+
+const api = request(app);
 
 let sequence = 0;
 
@@ -76,8 +83,8 @@ describe("Preview share routes", () => {
 
     const createRes = await api
       .post(`/api/preview-share/${book._id}`)
-      .query({ sharedWith: reader._id.toString(), durationMs: 60000 })
-      .set("Cookie", authorCookie);
+      .set("Cookie", authorCookie)
+      .send({ email: reader.email, duration: 60000, durationMs: 60000 });
 
     expect(createRes.status).toBe(201);
     expect(createRes.body.data.previewShare).toMatchObject({
@@ -92,7 +99,7 @@ describe("Preview share routes", () => {
       .set("Cookie", readerCookie);
 
     expect(readerGetRes.status).toBe(200);
-    expect(readerGetRes.body.data.previewShare._id).toBe(shareId);
+    expect(readerGetRes.headers["content-type"]).toContain("application/pdf");
   });
 
   test("rejects shares for non-preview books and duplicate preview shares", async () => {
@@ -112,8 +119,8 @@ describe("Preview share routes", () => {
 
     const draftShareRes = await api
       .post(`/api/preview-share/${draftRes.body.data.book._id}`)
-      .query({ sharedWith: reader._id.toString() })
-      .set("Cookie", authorCookie);
+      .set("Cookie", authorCookie)
+      .send({ email: reader.email, duration: 60000, durationMs: 60000 });
     expect(draftShareRes.status).toBe(400);
 
     const book = await createPreviewBook(authorCookie, {
@@ -121,14 +128,14 @@ describe("Preview share routes", () => {
     });
     const firstShareRes = await api
       .post(`/api/preview-share/${book._id}`)
-      .query({ sharedWith: reader._id.toString() })
-      .set("Cookie", authorCookie);
+      .set("Cookie", authorCookie)
+      .send({ email: reader.email, duration: 60000, durationMs: 60000 });
     expect(firstShareRes.status).toBe(201);
 
     const duplicateShareRes = await api
       .post(`/api/preview-share/${book._id}`)
-      .query({ sharedWith: reader._id.toString() })
-      .set("Cookie", authorCookie);
+      .set("Cookie", authorCookie)
+      .send({ email: reader.email, duration: 60000, durationMs: 60000 });
     expect(duplicateShareRes.status).toBe(400);
   });
 
@@ -142,14 +149,14 @@ describe("Preview share routes", () => {
 
     const nonOwnerCreateRes = await api
       .post(`/api/preview-share/${book._id}`)
-      .query({ sharedWith: otherAuthor._id.toString() })
-      .set("Cookie", otherAuthorCookie);
+      .set("Cookie", otherAuthorCookie)
+      .send({ email: otherAuthor.email, duration: 60000, durationMs: 60000 });
     expect(nonOwnerCreateRes.status).toBe(401);
 
     const createRes = await api
       .post(`/api/preview-share/${book._id}`)
-      .query({ sharedWith: reader._id.toString() })
-      .set("Cookie", ownerCookie);
+      .set("Cookie", ownerCookie)
+      .send({ email: reader.email, duration: 60000, durationMs: 60000 });
     expect(createRes.status).toBe(201);
     const shareId = createRes.body.data.previewShare._id;
 

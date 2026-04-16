@@ -1,5 +1,8 @@
-import { api } from "../setup.js";
 import { expect, describe, test } from "vitest";
+import request from "supertest";
+import app from "../../src/app.js";
+
+const api = request(app);
 
 describe("User Routes", () => {
   describe("/me route", () => {

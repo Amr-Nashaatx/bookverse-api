@@ -1,5 +1,8 @@
-import { api } from "../setup.js";
 import { describe, expect, test } from "vitest";
+import request from "supertest";
+import app from "../../src/app.js";
+
+const api = request(app);
 
 let sequence = 0;
 

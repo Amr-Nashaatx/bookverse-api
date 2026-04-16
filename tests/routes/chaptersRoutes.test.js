@@ -1,8 +1,11 @@
 import { describe, expect, test } from "vitest";
-import { api } from "../setup.js";
+import request from "supertest";
+import app from "../../src/app.js";
 import { UserModel } from "../../src/models/userModel.js";
 import { ChapterModel } from "../../src/models/chapterModel.js";
 import { BookModel } from "../../src/models/bookModel.js";
+
+const api = request(app);
 
 let sequence = 0;
 
