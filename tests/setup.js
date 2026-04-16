@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import app from "../src/app.js";
-import request from "supertest";
 import dotenve from "dotenv";
 import { beforeEach } from "vitest";
 
@@ -26,5 +24,3 @@ afterAll(async () => {
   await mongoose.connection.close();
   await mongoServer.stop();
 });
-
-export const api = request(app);
