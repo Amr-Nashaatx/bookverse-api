@@ -12,6 +12,7 @@ import userRoutes from "./routes/userRoutes.js";
 import shelfRoutes from "./routes/shelfRoutes.js";
 import authorRoutes from "./routes/authorRoutes.js";
 import previewShareRoutes from "./routes/previewShareRoutes.js";
+import notificationsRoutes from "./routes/notificationRoutes.js";
 
 import devAuth from "./routes/dev/devAuth.js";
 import cookieParser from "cookie-parser";
@@ -40,6 +41,7 @@ if (
   app.use("/api/dev/auth", devAuth);
 }
 
+app.use("/api/notifications", notificationsRoutes);
 app.use("/api/preview-share", previewShareRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
