@@ -37,6 +37,5 @@ export const markRead = asyncHandler(async (req: Request, res: Response) => {
   const notId = req.params.id as string;
   await notificationService.markRead(toMongoId(notId), userId);
 
-  const response = new APIResponse("success");
-  res.status(204).send(response);
+  res.status(204).send();
 });
