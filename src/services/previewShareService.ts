@@ -3,6 +3,7 @@ import * as bookService from "../services/bookService.js";
 import * as userService from "../services/usersService.js";
 import { AppError } from "../utils/errors/AppError.js";
 import type { IUser } from "../models/userModel.js";
+import { notificationService } from "./notificationService.js";
 
 const isShareOwnerOrAdmin = (previewShare: any, user: IUser) => {
   if (user.role === "admin") return true;
@@ -51,6 +52,21 @@ export const createPreviewShare = async (
     bookId,
     expiresAt: durationMs ? new Date(Date.now() + durationMs) : null,
   });
+
+  const shareId = previewShare.id;
+  const shareLink = `/preview-share/${shareId}`;
+  await notificationService.send({
+    recipientId: user._id,
+    title: "New book preview",
+    message: `${sharedBy.name} shared "${book.title}" with you.`,
+    actionUrl: shareLink,
+    metadata: {
+      type: "preview_share",
+      shareId,
+      bookId: book._id.toString(),
+    },
+  });
+
   return previewShare;
 };
 

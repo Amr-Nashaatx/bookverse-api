@@ -1,14 +1,18 @@
 import { sseManager } from "./SSE/SSEManager.js";
-import {
-  INotification,
-  NotificationModel,
-} from "../models/notificationModel.js";
+import { NotificationModel } from "../models/notificationModel.js";
 import mongoose from "mongoose";
 
 type MongoId = mongoose.Types.ObjectId;
+type NotificationInput = {
+  recipientId: MongoId;
+  title: string;
+  message: string;
+  actionUrl?: string;
+  metadata?: Record<string, unknown>;
+};
 
 class NotificationService {
-  async send(notification: INotification) {
+  async send(notification: NotificationInput) {
     const newNotification = await NotificationModel.create(notification);
     sseManager.sendToUser(
       newNotification.recipientId,
@@ -20,26 +24,31 @@ class NotificationService {
   }
 
   async markRead(notificationId: MongoId, userId: MongoId) {
-    await NotificationModel.findOneAndUpdate(
-      { _id: notificationId },
+    const notification = await NotificationModel.findOneAndUpdate(
+      { _id: notificationId, recipientId: userId },
       { readAt: new Date() },
+      { new: true },
     );
 
-    sseManager.sendToUser(userId, "notification:read", { id: notificationId });
+    if (notification) {
+      sseManager.sendToUser(userId, "notification:read", {
+        id: notificationId,
+      });
+    }
   }
 
   async getUnread(userId: MongoId) {
     const unread = await NotificationModel.find({
       recipientId: userId,
-      hreadAt: null,
-    });
+      readAt: null,
+    }).sort({ createdAt: -1 });
     return unread;
   }
 
   async getUnreadCount(userId: MongoId) {
     const unreadCount = await NotificationModel.find({
       recipientId: userId,
-      hreadAt: null,
+      readAt: null,
     }).countDocuments();
 
     return unreadCount;

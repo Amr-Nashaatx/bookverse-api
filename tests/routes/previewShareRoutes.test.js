@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from "vitest";
 import request from "supertest";
 import app from "../../src/app.js";
 import { UserModel } from "../../src/models/userModel.js";
+import { NotificationModel } from "../../src/models/notificationModel.js";
 
 vi.mock("../../src/services/previewService.js", () => ({
   generateBookPreview: vi.fn().mockResolvedValue(Buffer.from("%PDF-1.4")),
@@ -94,6 +95,15 @@ describe("Preview share routes", () => {
     expect(createRes.body.data.previewShare.expiresAt).toBeTruthy();
 
     const shareId = createRes.body.data.previewShare._id;
+    const notification = await NotificationModel.findOne({
+      recipientId: reader._id,
+      "metadata.shareId": shareId,
+    }).lean();
+    expect(notification).toMatchObject({
+      title: "New book preview",
+      actionUrl: `/preview-share/${shareId}`,
+    });
+
     const readerGetRes = await api
       .get(`/api/preview-share/${shareId}`)
       .set("Cookie", readerCookie);

@@ -10,45 +10,55 @@ class SSEManager {
   }
 
   addClient(userId: MongoId, res: Response) {
+    const userKey = userId.toString();
+
     // prevent multi-tab connections by removing existing one
-    if (this.connections.has(userId)) {
-      const existingConn = this.connections.get(userId);
+    if (this.connections.has(userKey)) {
+      const existingConn = this.connections.get(userKey);
       clearInterval(existingConn?.heartbeat);
       existingConn?.res.end();
-      this.connections.delete(userId);
+      this.connections.delete(userKey);
     }
 
     setSSEHeaders(res);
+    res.flushHeaders?.();
+
     const connId = crypto.randomUUID();
     const newConn = {
       connId,
       res,
       heartbeat: setInterval(() => {
         try {
-          res.send(`: ping \n\n`);
+          res.write(": ping\n\n");
         } catch (error) {
           this.removeClient(userId);
         }
       }, 30_000),
     };
 
-    this.connections.set(userId, newConn);
+    this.connections.set(userKey, newConn);
+    this.sendToUser(userId, "connected", { connected: true });
+    return connId;
   }
 
-  removeClient(userId: MongoId) {
-    const client = this.connections.get(userId);
+  removeClient(userId: MongoId, connId?: ConnectionDetails["connId"]) {
+    const userKey = userId.toString();
+    const client = this.connections.get(userKey);
     if (!client) return;
+    if (connId && client.connId !== connId) return;
 
     clearInterval(client.heartbeat);
-    this.connections.delete(userId);
+    this.connections.delete(userKey);
   }
 
   sendToUser(userId: MongoId, event: string, data: any) {
-    const client = this.connections.get(userId);
+    const userKey = userId.toString();
+    const client = this.connections.get(userKey);
     if (!client) return false;
 
     try {
-      client.res.send({ event, data });
+      client.res.write(`event: ${event}\n`);
+      client.res.write(`data: ${JSON.stringify(data)}\n\n`);
       return true;
     } catch (error) {
       this.removeClient(userId);
@@ -67,5 +77,5 @@ interface ConnectionDetails {
   connId: ReturnType<typeof crypto.randomUUID>;
 }
 
-type Connections = Map<MongoId, ConnectionDetails>;
+type Connections = Map<string, ConnectionDetails>;
 export const sseManager = new SSEManager();

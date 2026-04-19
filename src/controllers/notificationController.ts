@@ -8,13 +8,13 @@ import { toMongoId } from "../utils/utils.js";
 export const stream = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?._id!;
 
-  sseManager.addClient(userId, res);
-  req.on("close", () => sseManager.removeClient(userId)); // remove client on Disconnect
+  const connId = sseManager.addClient(userId, res);
+  req.on("close", () => sseManager.removeClient(userId, connId)); // remove client on Disconnect
 
   // force disconnect after 2 hours to prevent stale connections
   const forceClose = setTimeout(
     () => {
-      sseManager.removeClient(userId);
+      sseManager.removeClient(userId, connId);
       res.end();
     },
     2 * 60 * 60 * 1000,

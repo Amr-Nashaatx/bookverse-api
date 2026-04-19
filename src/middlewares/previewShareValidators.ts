@@ -16,6 +16,6 @@ const handleValidationErrors = (
 
 export const previewShareCreateValidator = [
   body("email").isEmail(),
-  body("duration").isNumeric(),
+  body("durationMs").optional().isFloat({ min: 1 }),
   handleValidationErrors,
 ];
