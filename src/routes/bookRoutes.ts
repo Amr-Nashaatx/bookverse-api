@@ -1,60 +1,39 @@
 import express, { Router } from "express";
+import * as bookController from "../controllers/bookController.js";
 import {
-  createBookController,
-  getBookByIdController,
-  updateBookController,
-  deleteBookController,
-  getBooksController,
-  getGenresController,
-  uploadBookCoverController,
-  getMyBooksController,
-  updateBookStatusController,
-  generateBookPreviewController,
-} from "../controllers/bookController.js";
-import {
-  validateCreateBook,
-  validateUpdateBook,
-  validateUpdateBookStatus,
+    validateCreateBook,
+    validatePublishRequest,
+    validateRequestArchive,
+    validateUpdateBook,
+    validateUpdateBookStatus,
 } from "../middlewares/bookValidators.js";
 import { auth } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
-import {
-  isAuthor,
-  isAuthorOrAdmin,
-} from "../middlewares/isAuthorMiddleware.js";
+import { isAuthor, isAuthorOrAdmin } from "../middlewares/isAuthorMiddleware.js";
 import chapterRoutes from "./chapterRoutes.js";
 
 const router: Router = express.Router();
 
 router
-  .route("/")
-  .get(getBooksController)
-  .post(auth, upload.single("cover"), validateCreateBook, createBookController);
+    .route("/")
+    .get(bookController.getBooksController)
+    .post(auth, upload.single("cover"), validateCreateBook, bookController.createBookController);
 
-router.get("/my-books", auth, isAuthor, getMyBooksController);
-router.get("/genres", getGenresController);
+router.get("/my-books", auth, isAuthor, bookController.getMyBooksController);
+router.get("/genres", bookController.getGenresController);
 
 router
-  .route("/:id")
-  .get(getBookByIdController)
-  .put(auth, validateUpdateBook, updateBookController)
-  .delete(auth, deleteBookController);
+    .route("/:id")
+    .get(bookController.getBookByIdController)
+    .put(auth, validateUpdateBook, bookController.updateBookController)
+    .delete(auth, bookController.deleteBookController);
 
-router.put(
-  "/:id/status",
-  auth,
-  isAuthorOrAdmin,
-  validateUpdateBookStatus, 
-  updateBookStatusController,
-);
+router.put("/:id/status", auth, isAuthorOrAdmin, validateUpdateBookStatus, bookController.updateBookStatusController);
+router.post("/:id/submit-for-review", auth, isAuthor, validatePublishRequest, bookController.submitForReview);
+router.post("/:id/request-archive", auth, isAuthor, validateRequestArchive, bookController.requestArchive);
 
-router.get("/:id/preview", auth, generateBookPreviewController);
-router.post(
-  "/:id/cover",
-  auth,
-  upload.single("cover"),
-  uploadBookCoverController,
-);
+router.get("/:id/preview", auth, isAuthor, bookController.generateBookPreviewController);
+router.post("/:id/cover", auth, upload.single("cover"), bookController.uploadBookCoverController);
 
 router.use("/:bookId/chapters", chapterRoutes);
 

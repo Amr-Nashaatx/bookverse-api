@@ -11,18 +11,21 @@ type NotificationInput = {
   metadata?: Record<string, unknown>;
 };
 
+type SharedNotification = { title: string; message: string; actionUrl?: string; metadata?: Record<string, unknown> };
 class NotificationService {
   async send(notification: NotificationInput) {
     const newNotification = await NotificationModel.create(notification);
-    sseManager.sendToUser(
-      newNotification.recipientId,
-      "notification",
-      newNotification,
-    );
+    sseManager.sendToUser(newNotification.recipientId, "notification", newNotification);
 
     return newNotification;
   }
 
+  async sendToMultiple(recepients: MongoId[], notification: SharedNotification) {
+    for (const id of recepients) {
+      const newNotification = await NotificationModel.create({ ...notification, recipientId: id });
+      sseManager.sendToUser(id, "notification", newNotification);
+    }
+  }
   async markRead(notificationId: MongoId, userId: MongoId) {
     const notification = await NotificationModel.findOneAndUpdate(
       { _id: notificationId, recipientId: userId },

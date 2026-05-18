@@ -6,24 +6,14 @@ import mongoose from "mongoose";
 dotenv.config();
 
 export const signAccessToken = (user: any): string => {
-  return jwt.sign(
-    { userId: user._id, email: user.email, name: user.name },
-    process.env.JWT_SECRET!,
-    {
-      expiresIn:
-        process.env.NODE_ENV === "development"
-          ? process.env.DEV_ACCESS_TOKEN_EXP || "10m"
-          : "10m",
-    } as any,
-  );
+  return jwt.sign({ userId: user._id, email: user.email, name: user.name }, process.env.JWT_SECRET!, {
+    expiresIn: process.env.NODE_ENV === "development" ? process.env.DEV_ACCESS_TOKEN_EXP || "10m" : "10m",
+  } as any);
 };
 
 export function signRefreshToken(userId: any, sessionId: any): string {
   return jwt.sign({ userId, sessionId }, process.env.DEV_REFRESH_SECRET!, {
-    expiresIn:
-      process.env.NODE_ENV === "development"
-        ? process.env.DEV_REFRESH_TOKEN_EXP || "30d"
-        : "30d",
+    expiresIn: process.env.NODE_ENV === "development" ? process.env.DEV_REFRESH_TOKEN_EXP || "30d" : "30d",
   } as any);
 }
 
@@ -56,6 +46,6 @@ export const setSSEHeaders = (res: Response) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
 };
-export const getSingleValueFromParams = (
-  value: string | string[] | undefined,
-) => (Array.isArray(value) ? value[0] : value);
+
+export const getSingleValueFromParams = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value === undefined ? "" : value;

@@ -1,6 +1,5 @@
-import { body, validationResult } from "express-validator";
-import { AppError } from "../utils/errors/AppError.js";
-import { Request, Response, NextFunction } from "express";
+import { body, param } from "express-validator";
+import { validationErrorHandler } from "../utils/validatorErrorHandler.js";
 
 export const validateCreateBook = [
   body("title")
@@ -24,14 +23,7 @@ export const validateCreateBook = [
     .withMessage("genre cannot be empty")
     .isLength({ min: 3, max: 30 })
     .withMessage("genre must be between 3 to 30characters long"),
-
-  (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new AppError("Validation failed", 400, errors.array() as any);
-    }
-    next();
-  },
+  validationErrorHandler,
 ];
 
 export const validateUpdateBook = [
@@ -67,27 +59,13 @@ export const validateUpdateBook = [
     .withMessage("genre cannot be empty")
     .isLength({ min: 3, max: 30 })
     .withMessage("genre must be between 3 to 30 characters long"),
-
-  (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new AppError("Validation failed", 400, errors.array() as any);
-    }
-    next();
-  },
+  validationErrorHandler,
 ];
 
 export const validateUpdateBookStatus = [
-  body("status")
-    .isString()
-    .not()
-    .isEmpty()
-    .withMessage("status should be a non empty string"),
-  (req: Request, res: Response, next: NextFunction) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      throw new AppError("Validation failed", 400, errors.array() as any);
-    }
-    next();
-  },
+  body("status").isString().not().isEmpty().withMessage("status should be a non empty string"),
+  validationErrorHandler,
 ];
+
+export const validatePublishRequest = [param("id").isMongoId(), validationErrorHandler];
+export const validateRequestArchive = [param("id").isMongoId(), validationErrorHandler];

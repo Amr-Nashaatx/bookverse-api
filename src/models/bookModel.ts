@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document, mongo } from "mongoose";
 
+export interface ReviewRequest {
+  requestedStatus: "published" | "archived";
+  requestedBy: mongoose.Types.ObjectId;
+  requestedAt: Date;
+  reviewedBy?: mongoose.Types.ObjectId | null;
+  reviewedAt?: Date | null;
+  rejectionReason?: string | null;
+}
 export interface Book {
   _id: mongoose.Types.ObjectId;
   title: string;
@@ -14,10 +22,23 @@ export interface Book {
   createdBy: Schema.Types.ObjectId | mongoose.Types.ObjectId;
   status: string;
   publishedAt: Date;
+  reviewRequest?: ReviewRequest;
 }
 
 interface BookDoc extends Book {}
 interface BookDoc extends Document<mongoose.Types.ObjectId> {}
+
+const reviewRequestSchema = new Schema<ReviewRequest>(
+  {
+    requestedStatus: { type: String, required: true },
+    requestedBy: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    requestedAt: { type: Date, required: true },
+    reviewedBy: { type: Schema.Types.ObjectId, ref: "User", default: null },
+    reviewedAt: { type: Date, default: null },
+    rejectionReason: { type: String, default: null },
+  },
+  { _id: false },
+);
 
 const bookSchema = new Schema<BookDoc>(
   {
@@ -70,6 +91,10 @@ const bookSchema = new Schema<BookDoc>(
     createdBy: {
       type: mongoose.Types.ObjectId,
       ref: "User",
+    },
+    reviewRequest: {
+      type: reviewRequestSchema,
+      default: undefined,
     },
   },
   { timestamps: true },

@@ -345,14 +345,15 @@ describe("Book Routes ", () => {
       expect(res.body.data.book.status).toBe("preview");
     });
 
-    test("should reject DRAFT -> PUBLISHED transition", async () => {
+    test("should allow DRAFT -> PUBLISHED transition", async () => {
       const res = await request(app)
         .put(`/api/books/${bookId}/status`)
         .set("Cookie", authCookie)
         .send({ status: "published" });
 
-      expect(res.status).toBe(400);
-      expect(res.body.message).toMatch(/Invalid status|Cannot transition/i);
+      expect(res.status).toBe(200);
+      expect(res.body.data.book.status).toBe("published");
+      expect(res.body.data.book.publishedAt).toBeDefined();
     });
 
     test("should reject DRAFT -> ARCHIVED transition", async () => {
@@ -387,21 +388,21 @@ describe("Book Routes ", () => {
       ); // within ~100ms
     });
 
-    test("should allow PREVIEW -> ARCHIVED transition", async () => {
+    test("should reject PREVIEW -> ARCHIVED transition", async () => {
       // First transition to preview
       await request(app)
         .put(`/api/books/${bookId}/status`)
         .set("Cookie", authCookie)
         .send({ status: "preview" });
 
-      // Then transition to archived
+      // Then attempt to archive directly from preview
       const res = await request(app)
         .put(`/api/books/${bookId}/status`)
         .set("Cookie", authCookie)
         .send({ status: "archived" });
 
-      expect(res.status).toBe(200);
-      expect(res.body.data.book.status).toBe("archived");
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Invalid status|Cannot transition/i);
     });
 
     test("should allow PUBLISHED -> ARCHIVED transition", async () => {
@@ -449,11 +450,11 @@ describe("Book Routes ", () => {
     });
 
     test("should reject ARCHIVED -> PREVIEW transition", async () => {
-      // Setup: draft -> preview -> archived
+      // Setup: draft -> published -> archived
       await request(app)
         .put(`/api/books/${bookId}/status`)
         .set("Cookie", authCookie)
-        .send({ status: "preview" });
+        .send({ status: "published" });
 
       await request(app)
         .put(`/api/books/${bookId}/status`)

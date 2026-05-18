@@ -25,10 +25,7 @@ export const uploadAvatar = asyncHandler(
   async (req: Request, res: Response) => {
     const file = req.file!;
     const userId = req.user?._id!;
-    const user = await usersService.uploadAvatar(
-      userId.toString(),
-      file.buffer,
-    );
+    await usersService.uploadAvatar(userId.toString(), file.buffer);
     const apiRes = new APIResponse("success", "Uploaded avatar");
     return res.send(apiRes);
   },

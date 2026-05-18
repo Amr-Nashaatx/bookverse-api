@@ -1,7 +1,7 @@
 import { IUser, UserModel } from "../models/userModel.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { CloudinaryProvider } from "./storage/CloundinaryProvider.js";
-import mongoose from "mongoose";
+import mongoose, { FilterQuery } from "mongoose";
 
 export const updateUser = async (id: string, updates: Partial<IUser>) => {
   const updatedUser = await UserModel.findOneAndUpdate({ _id: id }, updates, {
@@ -39,4 +39,8 @@ export const findByEmail = async (userEmail: string) => {
   if (!user) throw new AppError("Invalid user email", 400);
 
   return user;
+};
+
+export const findUsersBy = async (filter: FilterQuery<IUser>) => {
+  return UserModel.find({ ...filter }).lean();
 };

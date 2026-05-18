@@ -13,6 +13,7 @@ import shelfRoutes from "./routes/shelfRoutes.js";
 import authorRoutes from "./routes/authorRoutes.js";
 import previewShareRoutes from "./routes/previewShareRoutes.js";
 import notificationsRoutes from "./routes/notificationRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 
 import devAuth from "./routes/dev/devAuth.js";
 import cookieParser from "cookie-parser";
@@ -49,6 +50,7 @@ app.use("/api/books", bookRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/shelves", shelfRoutes);
 app.use("/api/authors", authorRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorHandler);
 

@@ -1,54 +1,42 @@
 import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { APIResponse } from "../utils/response.js";
-import {
-  createBook,
-  getBooks,
-  getBookById,
-  updateBook,
-  updateBookStatus,
-  deleteBook,
-  getGenres,
-  uploadBookCover,
-  getMyBooks,
-  createBookWithCover,
-} from "../services/bookService.js";
+import * as bookService from "../services/bookService.js";
 import * as chapterService from "../services/chapterService.js";
 import * as previewService from "../services/previewService.js";
+import * as userService from "../services/usersService.js";
 import { buildBookFilters } from "../utils/filters.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { Request, Response, NextFunction } from "express";
-import type { Book } from "../models/bookModel.js";
+import type { Book, ReviewRequest } from "../models/bookModel.js";
 import mongoose from "mongoose";
 import { getSingleValueFromParams } from "../utils/utils.js";
+import { notificationService } from "../services/notificationService.js";
 
-export const createBookController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const createBookController = asyncHandler(async (req: Request, res: Response) => {
     const authorId = req.user!.authorId;
     const book = req.body as Book;
-    let createdBook: Awaited<ReturnType<typeof createBook>>;
+    let createdBook: Awaited<ReturnType<typeof bookService.createBook>>;
     if (req.file) {
-      const buffer = req.file.buffer;
-      createdBook = await createBookWithCover(
-        {
-          ...book,
-          authorId,
-        },
-        buffer,
-      );
+        const buffer = req.file.buffer;
+        createdBook = await bookService.createBookWithCover(
+            {
+                ...book,
+                authorId,
+            },
+            buffer,
+        );
     } else {
-      createdBook = await createBook({
-        ...book,
-        authorId,
-      });
+        createdBook = await bookService.createBook({
+            ...book,
+            authorId,
+        });
     }
     const response = new APIResponse("success", "Book created successfully");
     response.addResponseData("book", createdBook);
     res.status(201).json(response);
-  },
-);
+});
 
-export const getMyBooksController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const getMyBooksController = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!._id;
     const allowedStatuses = ["published", "draft", "preview", "archived"];
     const query = req.query;
@@ -60,165 +48,170 @@ export const getMyBooksController = asyncHandler(
     let filter = {} as mongoose.FilterQuery<Book>;
     let sort = {} as { [key in string]: 1 | -1 };
     if (query) {
-      const status = query.status as string;
-      const sortBy = (query.sortBy || query.sort) as string;
-      if (status && allowedStatuses.includes(status)) filter["status"] = status;
-      switch (sortBy) {
-        case "title":
-          sort["title"] = 1;
-          break;
-        case "status":
-          sort["status"] = 1;
-          break;
-        case "lastModified":
-          sort["updatedAt"] = -1;
-          break;
-      }
+        const status = query.status as string;
+        const sortBy = (query.sortBy || query.sort) as string;
+        if (status && allowedStatuses.includes(status)) filter["status"] = status;
+        switch (sortBy) {
+            case "title":
+                sort["title"] = 1;
+                break;
+            case "status":
+                sort["status"] = 1;
+                break;
+            case "lastModified":
+                sort["updatedAt"] = -1;
+                break;
+        }
     }
-    const { books, pageInfo } = await getMyBooks(userId, filter, sort, {
-      page,
-      limit,
+    const { books, pageInfo } = await bookService.getMyBooks(userId, filter, sort, {
+        page,
+        limit,
     });
-    const response = new APIResponse(
-      "success",
-      "Fetched your books successfully",
-    );
+    const response = new APIResponse("success", "Fetched your books successfully");
     response.addResponseData("books", books);
     response.addResponseData("pageInfo", pageInfo);
     res.status(200).json(response);
-  },
-);
+});
 
-export const uploadBookCoverController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const uploadBookCoverController = asyncHandler(async (req: Request, res: Response) => {
     if (!req.file) {
-      throw new AppError("No image uploaded", 400);
+        throw new AppError("No image uploaded", 400);
     }
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const buffer = req.file.buffer;
-    const updatedBook = await uploadBookCover(bookId, buffer);
+    const updatedBook = await bookService.uploadBookCover(bookId, buffer);
 
-    const response = new APIResponse(
-      "success",
-      "Cover image uploaded created successfully",
-    );
+    const response = new APIResponse("success", "Cover image uploaded created successfully");
     response.addResponseData("book", updatedBook);
     res.status(200).json(response);
-  },
-);
+});
 
-export const getGenresController = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const genres = await getGenres();
+export const getGenresController = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const genres = await bookService.getGenres();
     const response = new APIResponse("success", "Genres fetched successfully");
     response.addResponseData("genres", genres);
     res.status(200).json(response);
-  },
-);
+});
 
-export const getBooksController = asyncHandler(
-  async (req: Request, res: Response, next: NextFunction) => {
-    const after = getSingleValueFromParams(
-      req.query.after as string | string[] | undefined,
-    );
-    const before = getSingleValueFromParams(
-      req.query.before as string | string[] | undefined,
-    );
-    const limitValue = getSingleValueFromParams(
-      req.query.limit as string | string[] | undefined,
-    );
-    const sort = getSingleValueFromParams(
-      req.query.sort as string | string[] | undefined,
-    );
+export const getBooksController = asyncHandler(async (req: Request, res: Response, next: NextFunction) => {
+    const after = getSingleValueFromParams(req.query.after as string | string[] | undefined);
+    const before = getSingleValueFromParams(req.query.before as string | string[] | undefined);
+    const limitValue = getSingleValueFromParams(req.query.limit as string | string[] | undefined);
+    const sort = getSingleValueFromParams(req.query.sort as string | string[] | undefined);
     const filters = buildBookFilters(req.query);
     const paginationParameters = {
-      after,
-      before,
-      limit: limitValue ? Number(limitValue) : undefined,
-      sort: sort ?? "-_id",
-      filters,
+        after: after || undefined,
+        before: before || undefined,
+        limit: limitValue ? Number(limitValue) : undefined,
+        sort: sort || "-_id",
+        filters,
     };
-    const { books, pageInfo } = await getBooks(paginationParameters);
+    const { books, pageInfo } = await bookService.getBooks(paginationParameters);
     const response = new APIResponse("success", "Books fetched successfully");
     response.addResponseData("books", books);
     response.addResponseData("pageInfo", pageInfo);
     res.status(200).json(response);
-  },
-);
+});
 
-export const getBookByIdController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const getBookByIdController = asyncHandler(async (req: Request, res: Response) => {
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
-    const book = await getBookById(bookId);
+    const book = await bookService.getBookById(bookId);
     if (book.status !== "published") throw new AppError("UnAuthorized", 401);
     const response = new APIResponse("success", "Book fetched successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
-  },
-);
+});
 
-export const generateBookPreviewController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const generateBookPreviewController = asyncHandler(async (req: Request, res: Response) => {
     try {
-      const bookId = getSingleValueFromParams(req.params.id);
-      if (!bookId) throw new AppError("Book id is required", 400);
-      const user = req.user!;
-      const book = await getBookById(bookId);
-      const chapters = await chapterService.findChaptersOfBook(bookId, user);
-      const pdf = await previewService.generateBookPreview(book, chapters);
+        const bookId = getSingleValueFromParams(req.params.id);
+        if (!bookId) throw new AppError("Book id is required", 400);
+        const authorId = req.user?.authorId!;
+        const book = await bookService.getBookById(bookId);
+        const chapters = await chapterService.findChaptersOfBook(bookId, authorId.toString());
+        const pdf = await previewService.generateBookPreview(book, chapters);
 
-      res.setHeader("Content-Type", "application/pdf");
-      // inline means open in browser tab rather than force download
-      res.setHeader(
-        "Content-Disposition",
-        `inline; filename="${book.title}.pdf"`,
-      );
-      res.send(pdf);
+        res.setHeader("Content-Type", "application/pdf");
+        // inline means open in browser tab rather than force download
+        res.setHeader("Content-Disposition", `inline; filename="${book.title}.pdf"`);
+        res.send(pdf);
     } catch (error) {
-      throw new AppError("Failed to generate preview", 500, error);
+        throw new AppError("Failed to generate preview", 500, error);
     }
-  },
-);
+});
 
-export const updateBookController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const updateBookController = asyncHandler(async (req: Request, res: Response) => {
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
-    const bookUpdate = req.body as Book;
+    const bookUpdate = req.body as Omit<Book, "reviewRequest">;
 
-    const book = await updateBook(bookId, authorId.toString(), bookUpdate);
+    const book = await bookService.updateBook(bookId, authorId.toString(), bookUpdate);
     const response = new APIResponse("success", "Book Updated successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
-  },
-);
+});
 
-export const updateBookStatusController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const updateBookStatusController = asyncHandler(async (req: Request, res: Response) => {
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
     const authorId = req.user!.authorId;
     const { status } = req.body;
-    const book = await updateBookStatus(bookId, authorId.toString(), status);
-    const response = new APIResponse(
-      "success",
-      "Book status updated successfully",
-    );
+    const book = await bookService.updateBookStatus(bookId, authorId.toString(), status);
+    const response = new APIResponse("success", "Book status updated successfully");
     response.addResponseData("book", book);
     res.status(200).json(response);
-  },
-);
+});
 
-export const deleteBookController = asyncHandler(
-  async (req: Request, res: Response) => {
+export const deleteBookController = asyncHandler(async (req: Request, res: Response) => {
     const bookId = getSingleValueFromParams(req.params.id);
     if (!bookId) throw new AppError("Book id is required", 400);
-    await deleteBook(bookId, req.user!);
-    res
-      .status(200)
-      .json(new APIResponse("success", "Book deleted successfully"));
-  },
-);
+    await bookService.deleteBook(bookId, req.user!);
+    res.status(200).json(new APIResponse("success", "Book deleted successfully"));
+});
+
+export const submitForReview = asyncHandler(async (req: Request, res: Response) => {
+    const bookId = getSingleValueFromParams(req.params.id);
+    const userId = req.user?._id!;
+    const authorId = req.user?.authorId!;
+    const request = {
+        requestedStatus: "published",
+        requestedBy: userId,
+        requestedAt: new Date(),
+    } satisfies ReviewRequest;
+
+    // update book with the request
+    await bookService.setReviewRequest(bookId, authorId.toString(), request);
+    // send notification for admins
+    const adminIds = (await userService.findUsersBy({ role: "admin" })).map((admin) => admin._id);
+    await notificationService.sendToMultiple(adminIds, {
+        message: `Requested review for book ${bookId}`,
+        title: "request for review",
+    });
+
+    res.status(204).send(new APIResponse("success", "review request has been submitted"));
+});
+
+export const requestArchive = asyncHandler(async (req: Request, res: Response) => {
+    const bookId = getSingleValueFromParams(req.params.id);
+    const userId = req.user?._id!;
+    const authorId = req.user?.authorId!;
+    const request = {
+        requestedStatus: "archived",
+        requestedBy: userId,
+        requestedAt: new Date(),
+    } satisfies ReviewRequest;
+
+    // update book with the request
+    await bookService.setArchiveRequest(bookId, authorId.toString(), request);
+    // send notification for admins
+    const adminIds = (await userService.findUsersBy({ role: "admin" })).map((admin) => admin._id);
+    await notificationService.sendToMultiple(adminIds, {
+        message: `Requested archive for book ${bookId}`,
+        title: "Archive Request",
+    });
+
+    res.status(204).send(new APIResponse("success", "Archive request has been submitted"));
+});

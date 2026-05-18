@@ -3,6 +3,7 @@ import { asyncHandler } from "../middlewares/asyncHandler.js";
 import { AppError } from "../utils/errors/AppError.js";
 import { APIResponse } from "../utils/response.js";
 import * as authorService from "../services/authorService.js";
+import { getSingleValueFromParams } from "../utils/utils.js";
 
 export type AuthorCreate = {
   penName: string;
@@ -14,6 +15,20 @@ export type AuthorCreate = {
     linkedIn?: string;
     facebook?: string;
   };
+};
+
+export type AuthorUpdate = {
+  penName: string;
+  bio?: string;
+  socialLinks?: {
+    website?: string;
+    x?: string;
+    instagram?: string;
+    linkedIn?: string;
+    facebook?: string;
+  };
+  status: "pending" | "approved" | "rejected";
+  rejectionReason: string;
 };
 
 export const createProfile = asyncHandler(
@@ -50,7 +65,8 @@ export const createProfile = asyncHandler(
 
 export const findProfileByPenName = asyncHandler(
   async (req: Request, res: Response) => {
-    const penName = req.params.penName;
+    const penName = getSingleValueFromParams(req.params.penName);
+    if (!penName) throw new AppError("pen name is missing", 400);
     const author = await authorService.findAuthorByPenName(penName);
     const totalBooksPublished = await authorService.countBooksPublishedBy(
       author.userId.toString(),
