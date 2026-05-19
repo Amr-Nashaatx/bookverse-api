@@ -189,6 +189,7 @@ export const submitForReview = asyncHandler(async (req: Request, res: Response) 
     await notificationService.sendToMultiple(adminIds, {
         message: `Requested review for book ${bookId}`,
         title: "request for review",
+        actionUrl: "/admin/requests",
     });
 
     res.status(204).send(new APIResponse("success", "review request has been submitted"));
@@ -211,6 +212,7 @@ export const requestArchive = asyncHandler(async (req: Request, res: Response) =
     await notificationService.sendToMultiple(adminIds, {
         message: `Requested archive for book ${bookId}`,
         title: "Archive Request",
+        actionUrl: "/admin/requests",
     });
 
     res.status(204).send(new APIResponse("success", "Archive request has been submitted"));

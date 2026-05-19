@@ -71,9 +71,8 @@ export const rejectArchive = asyncHandler(async (req: Request, res: Response) =>
     res.status(204).send(new APIResponse("success", "Book archive request has been rejected"));
 });
 
-export const listBooks = asyncHandler(async (req: Request, res: Response) => {
-    const status = req.query.status as string;
-    const books = await bookService.getBooksAsAdmin({ status });
+export const listPendingBooks = asyncHandler(async (req: Request, res: Response) => {
+    const books = await bookService.getPendingBooksAsAdmin();
     const apiRes = new APIResponse("success", "Books List");
     apiRes.addResponseData("books", books);
     res.send(apiRes);

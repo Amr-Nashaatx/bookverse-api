@@ -22,5 +22,5 @@ router.post("/books/:id/approve-publish", auth, isAdmin, validateModerateBookReq
 router.post("/books/:id/reject-publish", auth, isAdmin, validateModerateBookRequest, adminController.rejectPublish);
 router.post("/books/:id/approve-archive", auth, isAdmin, validateModerateBookRequest, adminController.approveArchive);
 router.post("/books/:id/reject-archive", auth, isAdmin, validateModerateBookRequest, adminController.rejectArchive);
-router.get("/books/", auth, isAdmin, validateListBooks, adminController.listBooks);
+router.get("/books/pending", auth, isAdmin, validateListBooks, adminController.listPendingBooks);
 export default router;

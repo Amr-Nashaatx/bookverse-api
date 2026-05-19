@@ -284,7 +284,6 @@ export const setReviewRequest = async (bookdId: string, authorId: string, reques
     const book = await BookModel.findOne({ _id: bookdId, authorId: toMongoId(authorId) });
     if (!book) throw new AppError("Book not found", 404);
 
-    if (book.status !== "draft") throw new AppError("Book must be in draft state to edit", 400);
     if (book.reviewRequest && !book.reviewRequest.reviewedAt)
         throw new AppError("Book already has a pending request", 400);
 
@@ -389,7 +388,9 @@ export const rejectArchiveRequest = async (
     return updated;
 };
 
-export const getBooksAsAdmin = async (filter: FilterQuery<Book>) => {
-    const books = await BookModel.find(filter);
+export const getPendingBooksAsAdmin = async () => {
+    const books = await BookModel.find({
+        $and: [{ reviewRequest: { $ne: null } }, { "reviewRequest.reviewedAt": null }],
+    });
     return books;
 };

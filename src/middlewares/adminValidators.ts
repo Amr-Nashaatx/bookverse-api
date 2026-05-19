@@ -21,4 +21,4 @@ export const validateModerateBookRequest = [
     validationErrorHandler,
 ];
 
-export const validateListBooks = [query("status").optional().isString()];
+export const validateListBooks = [];

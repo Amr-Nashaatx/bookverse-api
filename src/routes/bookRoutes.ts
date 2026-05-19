@@ -9,7 +9,7 @@ import {
 } from "../middlewares/bookValidators.js";
 import { auth } from "../middlewares/authMiddleware.js";
 import { upload } from "../middlewares/uploadMiddleware.js";
-import { isAuthor, isAuthorOrAdmin } from "../middlewares/isAuthorMiddleware.js";
+import { isAuthor } from "../middlewares/isAuthorMiddleware.js";
 import chapterRoutes from "./chapterRoutes.js";
 
 const router: Router = express.Router();
@@ -28,7 +28,7 @@ router
     .put(auth, validateUpdateBook, bookController.updateBookController)
     .delete(auth, bookController.deleteBookController);
 
-router.put("/:id/status", auth, isAuthorOrAdmin, validateUpdateBookStatus, bookController.updateBookStatusController);
+router.put("/:id/status", auth, isAuthor, validateUpdateBookStatus, bookController.updateBookStatusController);
 router.post("/:id/submit-for-review", auth, isAuthor, validatePublishRequest, bookController.submitForReview);
 router.post("/:id/request-archive", auth, isAuthor, validateRequestArchive, bookController.requestArchive);
 
